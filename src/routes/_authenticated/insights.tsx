@@ -1,4 +1,37 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useMemo, useState } from "react";
+import {
+  LineChart,
+  Line,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ReferenceLine,
+  Scatter,
+  ComposedChart,
+} from "recharts";
+import { listVehicles } from "@/lib/vehicles.functions";
+import { listExpenses } from "@/lib/expenses.functions";
+import { getProfile } from "@/lib/profile.functions";
+import {
+  consumptionPoints,
+  segmentedAverages,
+  averageConsumption,
+  pricePerLiterSeries,
+  type ExpenseRow,
+} from "@/lib/calc";
+import {
+  defaultSettings,
+  formatConsumption,
+  formatPricePerLiter,
+  moneyMinorToMajor,
+} from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { t } from "@/lib/strings";
 
 export const Route = createFileRoute("/_authenticated/insights")({
   head: () => ({ meta: [{ title: "Insights — RunningCost" }] }),
@@ -6,13 +39,223 @@ export const Route = createFileRoute("/_authenticated/insights")({
 });
 
 function InsightsPage() {
+  const navigate = useNavigate();
+  const fetchVehicles = useServerFn(listVehicles);
+  const fetchExpenses = useServerFn(listExpenses);
+  const fetchProfile = useServerFn(getProfile);
+
+  const profileQ = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
+  const vehiclesQ = useQuery({ queryKey: ["vehicles"], queryFn: () => fetchVehicles() });
+  const vehicles = vehiclesQ.data ?? [];
+  const [activeVehicleId, setActiveVehicleId] = useState<string | null>(null);
+  const vehicle = vehicles.find((v: any) => v.id === activeVehicleId) ?? vehicles[0];
+
+  const expensesQ = useQuery({
+    queryKey: ["expenses", vehicle?.id],
+    queryFn: () => fetchExpenses({ data: { vehicle_id: vehicle!.id } }),
+    enabled: !!vehicle,
+  });
+
+  const settings = profileQ.data ?? defaultSettings;
+  const currency = vehicle?.currency ?? settings.currency;
+  const moneySettings = { ...settings, currency };
+  const expenses = (expensesQ.data ?? []) as ExpenseRow[];
+
+  const points = useMemo(() => consumptionPoints(expenses), [expenses]);
+  const segAvg = useMemo(() => segmentedAverages(points), [points]);
+  const overallAvg = useMemo(() => averageConsumption(points), [points]);
+
+  const consChartData = useMemo(
+    () =>
+      points.map((p) => ({
+        date: p.date,
+        l_per_100km: Number(p.l_per_100km.toFixed(2)),
+        spike: p.is_spike ? Number(p.l_per_100km.toFixed(2)) : null,
+        is_loaded: p.is_loaded,
+      })),
+    [points],
+  );
+
+  const priceSeries = useMemo(
+    () =>
+      pricePerLiterSeries(expenses).map((p) => ({
+        date: p.date,
+        price_major: moneyMinorToMajor(p.price, currency),
+        price_minor: p.price,
+      })),
+    [expenses, currency],
+  );
+
+  if (vehiclesQ.isLoading) return <p className="text-muted-foreground">Loading…</p>;
+
+  if (vehicles.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <h1 className="font-display text-2xl mb-2">Insights</h1>
+        <p className="text-muted-foreground mb-6">{t.empty.noVehicles}</p>
+        <Button onClick={() => navigate({ to: "/onboarding" })}>
+          <Plus className="size-4 mr-1" /> Add vehicle
+        </Button>
+      </div>
+    );
+  }
+
+  const hasConsumption = points.length >= 1;
+  const hasPrice = priceSeries.length >= 1;
+
   return (
-    <div className="space-y-4">
-      <h1 className="font-display text-2xl">Insights</h1>
-      <div className="kpi-card text-center py-12">
-        <p className="text-muted-foreground">
-          Coming soon — consumption trends, projections, and lifetime cost estimates will live here.
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <h1 className="font-display text-2xl">Insights</h1>
+      </div>
+
+      {vehicles.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {vehicles.map((v: any) => (
+            <button
+              key={v.id}
+              onClick={() => setActiveVehicleId(v.id)}
+              className="tag-chip"
+              data-on={v.id === vehicle?.id}
+            >
+              {v.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Segmented averages */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="kpi-card">
+          <div className="kpi-label">{t.kpi.cleanAvg}</div>
+          <div className="kpi-value">{formatConsumption(segAvg.clean, settings)}</div>
+          <div className="text-xs text-muted-foreground mt-1">Untagged fills</div>
+        </div>
+        <div className="kpi-card">
+          <div className="kpi-label">{t.kpi.loadedAvg}</div>
+          <div className="kpi-value">{formatConsumption(segAvg.loaded, settings)}</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            Towing · Fully loaded · Roof box
+          </div>
+        </div>
+      </div>
+
+      {/* Consumption trend */}
+      <div className="kpi-card">
+        <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
+          <div className="kpi-label">Consumption trend (l/100km)</div>
+          {overallAvg != null && (
+            <div className="text-xs text-muted-foreground">
+              Avg {formatConsumption(overallAvg, settings)}
+            </div>
+          )}
+        </div>
+        <div className="h-64">
+          {!hasConsumption ? (
+            <div className="h-full grid place-items-center text-muted-foreground text-sm text-center px-6">
+              {t.empty.needFuel}
+            </div>
+          ) : (
+            <ResponsiveContainer>
+              <ComposedChart data={consChartData}>
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                />
+                <YAxis
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                  domain={["auto", "auto"]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--color-card)",
+                    border: "1px solid var(--color-border)",
+                  }}
+                  formatter={(v: any) => (v == null ? "—" : `${v} l/100km`)}
+                />
+                {overallAvg != null && (
+                  <ReferenceLine
+                    y={Number(overallAvg.toFixed(2))}
+                    stroke="var(--color-muted-foreground)"
+                    strokeDasharray="3 3"
+                    label={{
+                      value: "avg",
+                      fill: "var(--color-muted-foreground)",
+                      fontSize: 10,
+                      position: "right",
+                    }}
+                  />
+                )}
+                <Line
+                  type="monotone"
+                  dataKey="l_per_100km"
+                  stroke="var(--color-primary)"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: "var(--color-primary)" }}
+                  activeDot={{ r: 5 }}
+                />
+                <Scatter dataKey="spike" fill="var(--color-destructive)" shape="circle" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">
+          Tagged loads (towing, roof box, fully loaded) are expected to read higher. An
+          untagged spike — highlighted — may be worth a check.
         </p>
+      </div>
+
+      {/* Fuel price paid */}
+      <div className="kpi-card">
+        <div className="kpi-label mb-2">Fuel price paid</div>
+        <div className="h-56">
+          {!hasPrice ? (
+            <div className="h-full grid place-items-center text-muted-foreground text-sm text-center px-6">
+              {t.empty.needFuel}
+            </div>
+          ) : (
+            <ResponsiveContainer>
+              <LineChart data={priceSeries}>
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                />
+                <YAxis
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                  domain={["auto", "auto"]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--color-card)",
+                    border: "1px solid var(--color-border)",
+                  }}
+                  formatter={(_v: any, _n: any, item: any) =>
+                    formatPricePerLiter(item?.payload?.price_minor ?? 0, moneySettings)
+                  }
+                />
+                <Line
+                  type="monotone"
+                  dataKey="price_major"
+                  stroke="var(--color-primary)"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: "var(--color-primary)" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Coming soon placeholders */}
+      <div className="grid md:grid-cols-2 gap-3">
+        <div className="kpi-card opacity-75">
+          <div className="kpi-label">Lifetime cost (with backfill)</div>
+          <p className="text-sm text-muted-foreground mt-1">Coming soon.</p>
+        </div>
+        <div className="kpi-card opacity-75">
+          <div className="kpi-label">Projection</div>
+          <p className="text-sm text-muted-foreground mt-1">Coming soon.</p>
+        </div>
       </div>
     </div>
   );
