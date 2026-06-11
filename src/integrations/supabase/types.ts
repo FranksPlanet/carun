@@ -14,7 +14,281 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      expenses: {
+        Row: {
+          amount_minor: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          currency: string
+          date: string
+          full_tank: boolean | null
+          id: string
+          liters: number | null
+          note: string | null
+          odometer_km: number
+          receipt_path: string | null
+          tags: string[]
+          updated_at: string
+          user_id: string
+          vehicle_id: string
+        }
+        Insert: {
+          amount_minor: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          currency?: string
+          date: string
+          full_tank?: boolean | null
+          id?: string
+          liters?: number | null
+          note?: string | null
+          odometer_km: number
+          receipt_path?: string | null
+          tags?: string[]
+          updated_at?: string
+          user_id: string
+          vehicle_id: string
+        }
+        Update: {
+          amount_minor?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          currency?: string
+          date?: string
+          full_tank?: boolean | null
+          id?: string
+          liters?: number | null
+          note?: string | null
+          odometer_km?: number
+          receipt_path?: string | null
+          tags?: string[]
+          updated_at?: string
+          user_id?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      past_repairs: {
+        Row: {
+          amount_minor: number
+          created_at: string
+          currency: string
+          exact_date: string | null
+          id: string
+          label: string
+          month: number | null
+          precision: Database["public"]["Enums"]["date_precision"]
+          representative_date: string
+          season: Database["public"]["Enums"]["season"] | null
+          user_id: string
+          vehicle_id: string
+          year: number
+        }
+        Insert: {
+          amount_minor: number
+          created_at?: string
+          currency?: string
+          exact_date?: string | null
+          id?: string
+          label: string
+          month?: number | null
+          precision: Database["public"]["Enums"]["date_precision"]
+          representative_date: string
+          season?: Database["public"]["Enums"]["season"] | null
+          user_id: string
+          vehicle_id: string
+          year: number
+        }
+        Update: {
+          amount_minor?: number
+          created_at?: string
+          currency?: string
+          exact_date?: string | null
+          id?: string
+          label?: string
+          month?: number | null
+          precision?: Database["public"]["Enums"]["date_precision"]
+          representative_date?: string
+          season?: Database["public"]["Enums"]["season"] | null
+          user_id?: string
+          vehicle_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "past_repairs_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          consumption_style: Database["public"]["Enums"]["consumption_style"]
+          created_at: string
+          currency: string
+          distance_unit: Database["public"]["Enums"]["distance_unit"]
+          locale: string
+          updated_at: string
+          user_id: string
+          volume_unit: Database["public"]["Enums"]["volume_unit"]
+        }
+        Insert: {
+          consumption_style?: Database["public"]["Enums"]["consumption_style"]
+          created_at?: string
+          currency?: string
+          distance_unit?: Database["public"]["Enums"]["distance_unit"]
+          locale?: string
+          updated_at?: string
+          user_id: string
+          volume_unit?: Database["public"]["Enums"]["volume_unit"]
+        }
+        Update: {
+          consumption_style?: Database["public"]["Enums"]["consumption_style"]
+          created_at?: string
+          currency?: string
+          distance_unit?: Database["public"]["Enums"]["distance_unit"]
+          locale?: string
+          updated_at?: string
+          user_id?: string
+          volume_unit?: Database["public"]["Enums"]["volume_unit"]
+        }
+        Relationships: []
+      }
+      recurring_costs: {
+        Row: {
+          amount_minor_per_year: number
+          created_at: string
+          currency: string
+          id: string
+          label: string | null
+          type: Database["public"]["Enums"]["recurring_type"]
+          user_id: string
+          vehicle_id: string
+        }
+        Insert: {
+          amount_minor_per_year: number
+          created_at?: string
+          currency?: string
+          id?: string
+          label?: string | null
+          type: Database["public"]["Enums"]["recurring_type"]
+          user_id: string
+          vehicle_id: string
+        }
+        Update: {
+          amount_minor_per_year?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          label?: string | null
+          type?: Database["public"]["Enums"]["recurring_type"]
+          user_id?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_costs_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reminders: {
+        Row: {
+          created_at: string
+          due_date: string | null
+          due_odometer_km: number | null
+          id: string
+          note: string | null
+          type: Database["public"]["Enums"]["reminder_type"]
+          user_id: string
+          vehicle_id: string
+        }
+        Insert: {
+          created_at?: string
+          due_date?: string | null
+          due_odometer_km?: number | null
+          id?: string
+          note?: string | null
+          type: Database["public"]["Enums"]["reminder_type"]
+          user_id: string
+          vehicle_id: string
+        }
+        Update: {
+          created_at?: string
+          due_date?: string | null
+          due_odometer_km?: number | null
+          id?: string
+          note?: string | null
+          type?: Database["public"]["Enums"]["reminder_type"]
+          user_id?: string
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vehicles: {
+        Row: {
+          created_at: string
+          currency: string
+          fuel_type: Database["public"]["Enums"]["fuel_type"]
+          id: string
+          name: string
+          plate: string | null
+          purchase_date: string
+          purchase_odometer_km: number
+          purchase_price_minor: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          fuel_type: Database["public"]["Enums"]["fuel_type"]
+          id?: string
+          name: string
+          plate?: string | null
+          purchase_date: string
+          purchase_odometer_km?: number
+          purchase_price_minor?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          fuel_type?: Database["public"]["Enums"]["fuel_type"]
+          id?: string
+          name?: string
+          plate?: string | null
+          purchase_date?: string
+          purchase_odometer_km?: number
+          purchase_price_minor?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +297,25 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      consumption_style: "l_per_100km" | "km_per_l" | "mpg"
+      date_precision: "exact" | "month" | "season" | "year"
+      distance_unit: "km" | "mi"
+      expense_category: "fuel" | "service" | "admin" | "other"
+      fuel_type: "diesel" | "petrol" | "lpg" | "hybrid" | "electric"
+      recurring_type:
+        | "insurance"
+        | "road_tax"
+        | "inspection"
+        | "parking"
+        | "other"
+      reminder_type:
+        | "service"
+        | "insurance"
+        | "inspection"
+        | "tyre_change"
+        | "other"
+      season: "spring" | "summer" | "autumn" | "winter"
+      volume_unit: "l" | "gal"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +442,28 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      consumption_style: ["l_per_100km", "km_per_l", "mpg"],
+      date_precision: ["exact", "month", "season", "year"],
+      distance_unit: ["km", "mi"],
+      expense_category: ["fuel", "service", "admin", "other"],
+      fuel_type: ["diesel", "petrol", "lpg", "hybrid", "electric"],
+      recurring_type: [
+        "insurance",
+        "road_tax",
+        "inspection",
+        "parking",
+        "other",
+      ],
+      reminder_type: [
+        "service",
+        "insurance",
+        "inspection",
+        "tyre_change",
+        "other",
+      ],
+      season: ["spring", "summer", "autumn", "winter"],
+      volume_unit: ["l", "gal"],
+    },
   },
 } as const
