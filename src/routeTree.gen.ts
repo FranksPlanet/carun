@@ -13,10 +13,9 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedProjectionRouteImport } from './routes/_authenticated/projection'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
+import { Route as AuthenticatedInsightsRouteImport } from './routes/_authenticated/insights'
 import { Route as AuthenticatedGarageRouteImport } from './routes/_authenticated/garage'
-import { Route as AuthenticatedFuelRouteImport } from './routes/_authenticated/fuel'
 import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 
@@ -39,24 +38,19 @@ const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedProjectionRoute = AuthenticatedProjectionRouteImport.update({
-  id: '/projection',
-  path: '/projection',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedInsightsRoute = AuthenticatedInsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedGarageRoute = AuthenticatedGarageRouteImport.update({
   id: '/garage',
   path: '/garage',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedFuelRoute = AuthenticatedFuelRouteImport.update({
-  id: '/fuel',
-  path: '/fuel',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedExpensesRoute = AuthenticatedExpensesRouteImport.update({
@@ -75,10 +69,9 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
-  '/fuel': typeof AuthenticatedFuelRoute
   '/garage': typeof AuthenticatedGarageRoute
+  '/insights': typeof AuthenticatedInsightsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/projection': typeof AuthenticatedProjectionRoute
   '/settings': typeof AuthenticatedSettingsRoute
 }
 export interface FileRoutesByTo {
@@ -86,10 +79,9 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
-  '/fuel': typeof AuthenticatedFuelRoute
   '/garage': typeof AuthenticatedGarageRoute
+  '/insights': typeof AuthenticatedInsightsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/projection': typeof AuthenticatedProjectionRoute
   '/settings': typeof AuthenticatedSettingsRoute
 }
 export interface FileRoutesById {
@@ -99,10 +91,9 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
-  '/_authenticated/fuel': typeof AuthenticatedFuelRoute
   '/_authenticated/garage': typeof AuthenticatedGarageRoute
+  '/_authenticated/insights': typeof AuthenticatedInsightsRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
-  '/_authenticated/projection': typeof AuthenticatedProjectionRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
 }
 export interface FileRouteTypes {
@@ -112,10 +103,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/expenses'
-    | '/fuel'
     | '/garage'
+    | '/insights'
     | '/onboarding'
-    | '/projection'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -123,10 +113,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/expenses'
-    | '/fuel'
     | '/garage'
+    | '/insights'
     | '/onboarding'
-    | '/projection'
     | '/settings'
   id:
     | '__root__'
@@ -135,10 +124,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/expenses'
-    | '/_authenticated/fuel'
     | '/_authenticated/garage'
+    | '/_authenticated/insights'
     | '/_authenticated/onboarding'
-    | '/_authenticated/projection'
     | '/_authenticated/settings'
   fileRoutesById: FileRoutesById
 }
@@ -178,13 +166,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/projection': {
-      id: '/_authenticated/projection'
-      path: '/projection'
-      fullPath: '/projection'
-      preLoaderRoute: typeof AuthenticatedProjectionRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/onboarding': {
       id: '/_authenticated/onboarding'
       path: '/onboarding'
@@ -192,18 +173,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/insights': {
+      id: '/_authenticated/insights'
+      path: '/insights'
+      fullPath: '/insights'
+      preLoaderRoute: typeof AuthenticatedInsightsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/garage': {
       id: '/_authenticated/garage'
       path: '/garage'
       fullPath: '/garage'
       preLoaderRoute: typeof AuthenticatedGarageRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/fuel': {
-      id: '/_authenticated/fuel'
-      path: '/fuel'
-      fullPath: '/fuel'
-      preLoaderRoute: typeof AuthenticatedFuelRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/expenses': {
@@ -226,20 +207,18 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
-  AuthenticatedFuelRoute: typeof AuthenticatedFuelRoute
   AuthenticatedGarageRoute: typeof AuthenticatedGarageRoute
+  AuthenticatedInsightsRoute: typeof AuthenticatedInsightsRoute
   AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
-  AuthenticatedProjectionRoute: typeof AuthenticatedProjectionRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
-  AuthenticatedFuelRoute: AuthenticatedFuelRoute,
   AuthenticatedGarageRoute: AuthenticatedGarageRoute,
+  AuthenticatedInsightsRoute: AuthenticatedInsightsRoute,
   AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
-  AuthenticatedProjectionRoute: AuthenticatedProjectionRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
 }
 
@@ -254,3 +233,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
