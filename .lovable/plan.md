@@ -1,31 +1,21 @@
-# What you should be seeing
-
-After signing in, the **Dashboard** at `/dashboard` — vehicle chips, four KPI cards (cost/km, tracked distance, avg consumption, total logged), and two charts (cost split pie, cumulative spend area). With no vehicles yet, an empty state pointing to onboarding.
-
-Right now you're staring at a blank dark screen because of a runtime crash, not styling:
-
-```
-Invariant failed: Expected to find a match below the root match in SPA mode.
-```
-
-## Root cause
-
-`src/routes/index.tsx` is a *match-less* route — it only has `beforeLoad` that throws `redirect({ to: "/dashboard" })`, no `component`. TanStack Start's SPA hydration walks the matched route tree and expects a leaf match under root; an index route that never renders trips the invariant during client hydration, so the whole tree fails and you get the bare background color.
-
 ## Plan
 
-1. **Fix `src/routes/index.tsx`** so it always resolves to a real component:
-   - Keep the auth check, but render a tiny `component` (e.g. a centered "Loading…") instead of relying solely on `beforeLoad` throwing.
-   - Do the redirect inside the component via `useNavigate` / `Navigate`, or set `component: () => <Navigate to="/dashboard" />`. That gives hydration a match to mount.
+1. **Replace the root client redirect**
+   - Change `src/routes/index.tsx` from rendering `<Navigate to="/dashboard" />` to rendering the actual start screen content.
+   - Because the app is auth-first, the safest root screen will be the same sign-in page used by `/auth`, so `/` always has a real child match during hydration instead of a redirect-only shell.
 
-2. **Verify the auth gate path.** `_authenticated/route.tsx` already redirects unauthenticated users to `/auth`, so `/` → `/dashboard` → `/auth` will work for signed-out users; signed-in users land on the dashboard.
+2. **Remove the stale generated route edit risk**
+   - Do not hand-edit `src/routeTree.gen.ts` again; let the router generator rebuild it from route files.
+   - If needed, restart the dev server after changing route files so the generated tree and browser cache line up.
 
-3. **Sanity check after the fix:**
-   - Reload `/` — should bounce to `/auth` (you're not signed in yet).
-   - Sign up via email, then land on `/dashboard` with the "Welcome to RunningCost / Add vehicle" empty state.
+3. **Keep `/dashboard` protected**
+   - Leave `_authenticated/route.tsx` as the auth gate for dashboard.
+   - Signed-out users opening `/dashboard` should redirect to `/auth`; signed-in users should see the dashboard or empty vehicle state.
 
-No other routes need to change for this fix. Scaffolded screens (expenses, fuel, projection, garage, onboarding, settings) are referenced in the nav but were not generated yet — that's a separate follow-up once you can actually see the app.
+4. **Verify the actual preview signal**
+   - Reload `/` and `/dashboard` in the preview.
+   - Confirm the console no longer shows `Expected to find a match below the root match in SPA mode` and that the visible UI is the sign-in screen or dashboard, not the plain blue/green background.
 
-## Follow-up after you can see the dashboard
+## Why this should fix it
 
-Want me to also generate the remaining route files in the same pass (onboarding wizard, expenses list+form with OCR, fuel log, projection, garage, settings), or fix the blank screen first and you decide what to build next?
+The current crash is not CSS anymore. The browser is still throwing TanStack Router’s SPA hydration invariant because it hydrates a route state with only the root match. A root route whose only job is an immediate client redirect can leave hydration without a concrete child match. Rendering a real root page avoids that root-only hydration state.
