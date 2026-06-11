@@ -101,6 +101,37 @@ function Dashboard() {
         </div>
       )}
 
+      {vehicle && (
+        <div className="kpi-card">
+          <div className="flex items-baseline justify-between flex-wrap gap-2">
+            <div>
+              <div className="font-display text-xl">{vehicle.name}</div>
+              <div className="text-xs text-muted-foreground">
+                {vehicle.plate ? `${vehicle.plate} · ` : ""}{cap(vehicle.fuel_type)}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="kpi-label">Current odometer</div>
+              <div className="font-display text-lg">{formatDistance(vehicle.current_odometer_km ?? 0, settings)}</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4 text-sm">
+            <div>
+              <div className="kpi-label">Purchased</div>
+              <div>{vehicle.purchase_date}</div>
+            </div>
+            <div>
+              <div className="kpi-label">Purchase odometer</div>
+              <div>{formatDistance(vehicle.purchase_odometer_km, settings)}</div>
+            </div>
+            <div>
+              <div className="kpi-label">Purchase price</div>
+              <div>{formatMoney(vehicle.purchase_price_minor, { ...settings, currency: vehicle.currency ?? settings.currency })}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="kpi-card kpi-hero">
           <div className="kpi-label">{t.kpi.costPerKm}</div>
