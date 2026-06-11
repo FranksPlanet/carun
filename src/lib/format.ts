@@ -81,18 +81,22 @@ export function formatVolume(liters: number, settings: ProfileSettings, fraction
 
 export function formatPricePerLiter(pricePerLiter: number, settings: ProfileSettings): string {
   const sym = currencySymbol[settings.currency] ?? settings.currency;
+  const digits = currencyMinorDigits[settings.currency] ?? 2;
+  const major = pricePerLiter / Math.pow(10, digits);
   if (settings.volume_unit === "gal") {
-    return `${formatNumber(pricePerLiter / L_TO_GAL, 2, settings.currency)} ${sym}/gal`;
+    return `${formatNumber(major / L_TO_GAL, 2, settings.currency)} ${sym}/gal`;
   }
-  return `${formatNumber(pricePerLiter, 2, settings.currency)} ${sym}/l`;
+  return `${formatNumber(major, 2, settings.currency)} ${sym}/l`;
 }
 
 export function formatCostPerKm(costPerKm: number, settings: ProfileSettings): string {
   const sym = currencySymbol[settings.currency] ?? settings.currency;
+  const digits = currencyMinorDigits[settings.currency] ?? 2;
+  const major = costPerKm / Math.pow(10, digits);
   if (settings.distance_unit === "mi") {
-    return `${formatNumber(costPerKm / KM_TO_MI, 2, settings.currency)} ${sym}/mi`;
+    return `${formatNumber(major / KM_TO_MI, 2, settings.currency)} ${sym}/mi`;
   }
-  return `${formatNumber(costPerKm, 2, settings.currency)} ${sym}/km`;
+  return `${formatNumber(major, 2, settings.currency)} ${sym}/km`;
 }
 
 export function formatConsumption(lPer100km: number | null, settings: ProfileSettings): string {
