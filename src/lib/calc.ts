@@ -184,12 +184,11 @@ export function computeBackfill(
   const first = new Date(firstLoggedDate).getTime();
   const gap_years = Math.max(0, (first - purchase) / (1000 * 60 * 60 * 24 * 365.25));
 
-  // variable per-km rate from tracked data: fuel + service + other
+  // fuel-only per-km rate for backfill (service/other are time-based or one-off)
   const km = trackedKm(expenses);
   const by = totalsByCategory(expenses);
-  const variable = by.fuel + by.service + by.other;
-  const ratePerKm = km > 0 ? variable / km : 0;
-  const km_variable_minor = Math.round(ratePerKm * gap_km);
+  const fuelRatePerKm = km > 0 ? by.fuel / km : 0;
+  const km_variable_minor = Math.round(fuelRatePerKm * gap_km);
 
   const yearlyRecurring = recurring.reduce((s, r) => s + r.amount_minor_per_year, 0);
   const recurring_minor = Math.round(yearlyRecurring * gap_years);
@@ -282,11 +281,10 @@ export function lifetimeBreakdown(
     gap_years = Math.max(0, (first - purchase) / (1000 * 60 * 60 * 24 * 365.25));
   }
 
-  // Per-km variable rate (fuel + service + other) — admin is time-based
+  // Fuel-only per-km rate for backfill (service/other are time-based or one-off)
   const km = trackedKm(expenses);
   const by = totalsByCategory(expenses);
-  const variable = (by.fuel ?? 0) + (by.service ?? 0) + (by.other ?? 0);
-  const per_km_variable_minor = km > 0 ? variable / km : 0;
+  const per_km_variable_minor = km > 0 ? (by.fuel ?? 0) / km : 0;
 
   const backfilled_running_minor = Math.round(per_km_variable_minor * gap_km);
   const backfilled_yearly_minor = Math.round(yearlyRecurring * gap_years);
