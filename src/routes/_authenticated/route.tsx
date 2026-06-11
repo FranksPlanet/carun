@@ -1,8 +1,15 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Receipt, Fuel, TrendingUp, Warehouse, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Receipt, TrendingUp, Menu, Warehouse, Settings, LogOut } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { t } from "@/lib/strings";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -18,9 +25,7 @@ export const Route = createFileRoute("/_authenticated")({
 const tabs = [
   { to: "/dashboard", label: t.nav.dashboard, icon: LayoutDashboard },
   { to: "/expenses", label: t.nav.expenses, icon: Receipt },
-  { to: "/fuel", label: t.nav.fuel, icon: Fuel },
-  { to: "/projection", label: t.nav.projection, icon: TrendingUp },
-  { to: "/garage", label: t.nav.garage, icon: Warehouse },
+  { to: "/insights", label: "Insights", icon: TrendingUp },
 ] as const;
 
 function AuthLayout() {
@@ -34,6 +39,28 @@ function AuthLayout() {
     await supabase.auth.signOut();
     navigate({ to: "/auth", replace: true });
   }
+
+  const HamburgerMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Menu">
+          <Menu className="size-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => navigate({ to: "/garage" })}>
+          <Warehouse className="size-4 mr-2" /> {t.nav.garage}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
+          <Settings className="size-4 mr-2" /> {t.nav.settings}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={signOut}>
+          <LogOut className="size-4 mr-2" /> {t.nav.signOut}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   return (
     <div className="min-h-screen flex flex-col pb-20 md:pb-0">
@@ -61,14 +88,7 @@ function AuthLayout() {
               );
             })}
           </nav>
-          <div className="flex items-center gap-1">
-            <Link to="/settings">
-              <Button variant="ghost" size="icon"><Settings className="size-4" /></Button>
-            </Link>
-            <Button variant="ghost" size="icon" onClick={signOut} aria-label={t.nav.signOut}>
-              <LogOut className="size-4" />
-            </Button>
-          </div>
+          {HamburgerMenu}
         </div>
       </header>
 
@@ -78,7 +98,7 @@ function AuthLayout() {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 border-t border-border bg-card/95 backdrop-blur z-20">
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-3">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = pathname.startsWith(tab.to);
