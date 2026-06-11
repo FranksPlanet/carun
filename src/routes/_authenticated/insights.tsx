@@ -15,17 +15,23 @@ import {
 } from "recharts";
 import { listVehicles } from "@/lib/vehicles.functions";
 import { listExpenses } from "@/lib/expenses.functions";
+import { listRecurring } from "@/lib/recurring.functions";
+import { listRepairs } from "@/lib/repairs.functions";
 import { getProfile } from "@/lib/profile.functions";
 import {
   consumptionPoints,
   segmentedAverages,
   averageConsumption,
   pricePerLiterSeries,
+  lifetimeBreakdown,
   type ExpenseRow,
 } from "@/lib/calc";
 import {
   defaultSettings,
   formatConsumption,
+  formatCostPerKm,
+  formatDistance,
+  formatMoney,
   formatPricePerLiter,
   moneyMinorToMajor,
 } from "@/lib/format";
