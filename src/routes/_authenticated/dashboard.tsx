@@ -1,10 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useServerFn } from "@tanstack/react-query" as never;
-import { useServerFn as useSF } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { listVehicles } from "@/lib/vehicles.functions";
 import { listExpenses } from "@/lib/expenses.functions";
 import { getProfile } from "@/lib/profile.functions";
-import { useQuery as useRQ } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   costPerKm,
