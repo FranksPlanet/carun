@@ -300,7 +300,7 @@ function InsightsPage() {
             </p>
           ) : (
             <p className="text-xs text-muted-foreground mb-3">
-              Per-km variable rate from your logs:{" "}
+              Fuel cost per km used for backfill:{" "}
               {formatCostPerKm(lifetime.per_km_variable_minor, moneySettings)}
             </p>
           )}
