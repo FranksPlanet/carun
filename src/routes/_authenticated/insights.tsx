@@ -48,6 +48,8 @@ function InsightsPage() {
   const navigate = useNavigate();
   const fetchVehicles = useServerFn(listVehicles);
   const fetchExpenses = useServerFn(listExpenses);
+  const fetchRecurring = useServerFn(listRecurring);
+  const fetchRepairs = useServerFn(listRepairs);
   const fetchProfile = useServerFn(getProfile);
 
   const profileQ = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
@@ -61,15 +63,44 @@ function InsightsPage() {
     queryFn: () => fetchExpenses({ data: { vehicle_id: vehicle!.id } }),
     enabled: !!vehicle,
   });
+  const recurringQ = useQuery({
+    queryKey: ["recurring", vehicle?.id],
+    queryFn: () => fetchRecurring({ data: { vehicle_id: vehicle!.id } }),
+    enabled: !!vehicle,
+  });
+  const repairsQ = useQuery({
+    queryKey: ["repairs", vehicle?.id],
+    queryFn: () => fetchRepairs({ data: { vehicle_id: vehicle!.id } }),
+    enabled: !!vehicle,
+  });
 
   const settings = profileQ.data ?? defaultSettings;
   const currency = vehicle?.currency ?? settings.currency;
   const moneySettings = { ...settings, currency };
   const expenses = (expensesQ.data ?? []) as ExpenseRow[];
+  const recurring = (recurringQ.data ?? []) as { amount_minor_per_year: number }[];
+  const repairs = (repairsQ.data ?? []) as { amount_minor: number }[];
 
   const points = useMemo(() => consumptionPoints(expenses), [expenses]);
   const segAvg = useMemo(() => segmentedAverages(points), [points]);
   const overallAvg = useMemo(() => averageConsumption(points), [points]);
+
+  const lifetime = useMemo(
+    () =>
+      vehicle
+        ? lifetimeBreakdown(
+            {
+              purchase_date: vehicle.purchase_date,
+              purchase_odometer_km: vehicle.purchase_odometer_km,
+              purchase_price_minor: vehicle.purchase_price_minor,
+            },
+            expenses,
+            recurring,
+            repairs,
+          )
+        : null,
+    [vehicle, expenses, recurring, repairs],
+  );
 
   const consChartData = useMemo(
     () =>
