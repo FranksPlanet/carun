@@ -49,8 +49,6 @@ function Dashboard() {
       cpk: costPerKm(expenses),
       total: totalLogged(expenses),
       avgCons: averageConsumption(consumptionPoints(expenses)),
-      byCat: categoryCostPerKm(expenses),
-      cum: cumulativeSpend(expenses).map((p) => ({ date: p.date, total: p.total / 100 })),
     };
   }, [expenses]);
 
@@ -70,15 +68,6 @@ function Dashboard() {
     );
   }
 
-  const catColors: Record<string, string> = {
-    fuel: "var(--color-chart-2)",
-    service: "var(--color-chart-1)",
-    admin: "var(--color-chart-3)",
-    other: "var(--color-chart-5)",
-  };
-  const catData = Object.entries(stats.byCat)
-    .map(([k, v]) => ({ name: k, value: v }))
-    .filter((x) => x.value > 0);
 
   return (
     <div className="space-y-6">
