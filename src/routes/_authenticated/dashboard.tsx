@@ -11,14 +11,11 @@ import {
   totalLogged,
   consumptionPoints,
   averageConsumption,
-  categoryCostPerKm,
-  cumulativeSpend,
 } from "@/lib/calc";
 import { defaultSettings, formatCostPerKm, formatDistance, formatConsumption, formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { t } from "@/lib/strings";
-import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — RunningCost" }] }),
@@ -52,8 +49,6 @@ function Dashboard() {
       cpk: costPerKm(expenses),
       total: totalLogged(expenses),
       avgCons: averageConsumption(consumptionPoints(expenses)),
-      byCat: categoryCostPerKm(expenses),
-      cum: cumulativeSpend(expenses).map((p) => ({ date: p.date, total: p.total / 100 })),
     };
   }, [expenses]);
 
@@ -73,15 +68,6 @@ function Dashboard() {
     );
   }
 
-  const catColors: Record<string, string> = {
-    fuel: "var(--color-chart-2)",
-    service: "var(--color-chart-1)",
-    admin: "var(--color-chart-3)",
-    other: "var(--color-chart-5)",
-  };
-  const catData = Object.entries(stats.byCat)
-    .map(([k, v]) => ({ name: k, value: v }))
-    .filter((x) => x.value > 0);
 
   return (
     <div className="space-y-6">
@@ -110,24 +96,6 @@ function Dashboard() {
                 {vehicle.plate ? `${vehicle.plate} · ` : ""}{cap(vehicle.fuel_type)}
               </div>
             </div>
-            <div className="text-right">
-              <div className="kpi-label">Current odometer</div>
-              <div className="font-display text-lg">{formatDistance(vehicle.current_odometer_km ?? 0, settings)}</div>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4 text-sm">
-            <div>
-              <div className="kpi-label">Purchased</div>
-              <div>{vehicle.purchase_date}</div>
-            </div>
-            <div>
-              <div className="kpi-label">Purchase odometer</div>
-              <div>{formatDistance(vehicle.purchase_odometer_km, settings)}</div>
-            </div>
-            <div>
-              <div className="kpi-label">Purchase price</div>
-              <div>{formatMoney(vehicle.purchase_price_minor, { ...settings, currency: vehicle.currency ?? settings.currency })}</div>
-            </div>
           </div>
         </div>
       )}
@@ -138,16 +106,16 @@ function Dashboard() {
           <div className="kpi-value">{formatCostPerKm(stats.cpk, settings)}</div>
         </div>
         <div className="kpi-card">
-          <div className="kpi-label">{t.kpi.trackedDistance}</div>
-          <div className="kpi-value">{formatDistance(stats.km, settings)}</div>
-        </div>
-        <div className="kpi-card">
           <div className="kpi-label">{t.kpi.avgConsumption}</div>
           <div className="kpi-value">{formatConsumption(stats.avgCons, settings)}</div>
         </div>
         <div className="kpi-card">
+          <div className="kpi-label">Current odometer</div>
+          <div className="kpi-value">{formatDistance(vehicle?.current_odometer_km ?? 0, settings)}</div>
+        </div>
+        <div className="kpi-card">
           <div className="kpi-label">{t.kpi.loggedTotal}</div>
-          <div className="kpi-value">{formatMoney(stats.total, settings)}</div>
+          <div className="kpi-value">{formatMoney(stats.total, { ...settings, currency: vehicle?.currency ?? settings.currency })}</div>
         </div>
       </div>
 
@@ -159,50 +127,14 @@ function Dashboard() {
           </Link>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="kpi-card">
-            <div className="kpi-label mb-2">Cost split</div>
-            <div className="h-48">
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie data={catData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={75} stroke="none">
-                    {catData.map((d) => (
-                      <Cell key={d.name} fill={catColors[d.name]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }}
-                    formatter={(v: number, n: string) => [formatCostPerKm(v, settings), n]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-label mb-2">Cumulative spend</div>
-            <div className="h-48">
-              <ResponsiveContainer>
-                <AreaChart data={stats.cum}>
-                  <defs>
-                    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.6} />
-                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="date" tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }} />
-                  <YAxis tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }} />
-                  <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)" }} />
-                  <Area type="monotone" dataKey="total" stroke="var(--color-primary)" fill="url(#g1)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+        <div className="kpi-card">
+          <div className="kpi-label mb-1">Insights</div>
+          <p className="text-sm text-muted-foreground">
+            Projections, lifetime cost estimates and consumption trends live in{" "}
+            <Link to="/insights" className="underline text-foreground">Insights</Link>.
+          </p>
         </div>
       )}
-
-      <div className="text-xs text-muted-foreground">
-        More screens (Expenses, Fuel, Projection, Garage, Onboarding, Settings) are scaffolded — see the build notes.
-      </div>
     </div>
   );
 }
