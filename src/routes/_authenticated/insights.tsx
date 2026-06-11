@@ -15,17 +15,23 @@ import {
 } from "recharts";
 import { listVehicles } from "@/lib/vehicles.functions";
 import { listExpenses } from "@/lib/expenses.functions";
+import { listRecurring } from "@/lib/recurring.functions";
+import { listRepairs } from "@/lib/repairs.functions";
 import { getProfile } from "@/lib/profile.functions";
 import {
   consumptionPoints,
   segmentedAverages,
   averageConsumption,
   pricePerLiterSeries,
+  lifetimeBreakdown,
   type ExpenseRow,
 } from "@/lib/calc";
 import {
   defaultSettings,
   formatConsumption,
+  formatCostPerKm,
+  formatDistance,
+  formatMoney,
   formatPricePerLiter,
   moneyMinorToMajor,
 } from "@/lib/format";
@@ -42,6 +48,8 @@ function InsightsPage() {
   const navigate = useNavigate();
   const fetchVehicles = useServerFn(listVehicles);
   const fetchExpenses = useServerFn(listExpenses);
+  const fetchRecurring = useServerFn(listRecurring);
+  const fetchRepairs = useServerFn(listRepairs);
   const fetchProfile = useServerFn(getProfile);
 
   const profileQ = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
@@ -55,15 +63,44 @@ function InsightsPage() {
     queryFn: () => fetchExpenses({ data: { vehicle_id: vehicle!.id } }),
     enabled: !!vehicle,
   });
+  const recurringQ = useQuery({
+    queryKey: ["recurring", vehicle?.id],
+    queryFn: () => fetchRecurring({ data: { vehicle_id: vehicle!.id } }),
+    enabled: !!vehicle,
+  });
+  const repairsQ = useQuery({
+    queryKey: ["repairs", vehicle?.id],
+    queryFn: () => fetchRepairs({ data: { vehicle_id: vehicle!.id } }),
+    enabled: !!vehicle,
+  });
 
   const settings = profileQ.data ?? defaultSettings;
   const currency = vehicle?.currency ?? settings.currency;
   const moneySettings = { ...settings, currency };
   const expenses = (expensesQ.data ?? []) as ExpenseRow[];
+  const recurring = (recurringQ.data ?? []) as { amount_minor_per_year: number }[];
+  const repairs = (repairsQ.data ?? []) as { amount_minor: number }[];
 
   const points = useMemo(() => consumptionPoints(expenses), [expenses]);
   const segAvg = useMemo(() => segmentedAverages(points), [points]);
   const overallAvg = useMemo(() => averageConsumption(points), [points]);
+
+  const lifetime = useMemo(
+    () =>
+      vehicle
+        ? lifetimeBreakdown(
+            {
+              purchase_date: vehicle.purchase_date,
+              purchase_odometer_km: vehicle.purchase_odometer_km,
+              purchase_price_minor: vehicle.purchase_price_minor,
+            },
+            expenses,
+            recurring,
+            repairs,
+          )
+        : null,
+    [vehicle, expenses, recurring, repairs],
+  );
 
   const consChartData = useMemo(
     () =>
@@ -246,16 +283,110 @@ function InsightsPage() {
         </div>
       </div>
 
-      {/* Coming soon placeholders */}
-      <div className="grid md:grid-cols-2 gap-3">
-        <div className="kpi-card opacity-75">
-          <div className="kpi-label">Lifetime cost (with backfill)</div>
-          <p className="text-sm text-muted-foreground mt-1">Coming soon.</p>
+      {/* Lifetime cost */}
+      {lifetime && (
+        <div className="kpi-card">
+          <div className="flex items-baseline justify-between gap-2 flex-wrap mb-3">
+            <div className="kpi-label">Lifetime cost (with backfill)</div>
+            <div className="text-xs text-muted-foreground">
+              Gap: {formatDistance(lifetime.gap_km, settings)} ·{" "}
+              {lifetime.gap_years.toFixed(1)} yr
+            </div>
+          </div>
+
+          {lifetime.gap_km === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No pre-tracking gap to estimate — tracking began at purchase.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground mb-3">
+              Per-km variable rate from your logs:{" "}
+              {formatCostPerKm(lifetime.per_km_variable_minor, moneySettings)}
+            </p>
+          )}
+
+          <div className="space-y-3">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                Actual
+              </div>
+              <ul className="text-sm divide-y divide-border rounded-md border border-border">
+                <li className="flex justify-between px-3 py-2">
+                  <span>Purchase price</span>
+                  <span className="tabular-nums">
+                    {formatMoney(lifetime.purchase_price_minor, moneySettings)}
+                  </span>
+                </li>
+                <li className="flex justify-between px-3 py-2">
+                  <span>Logged expenses total</span>
+                  <span className="tabular-nums">
+                    {formatMoney(lifetime.logged_total_minor, moneySettings)}
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                Estimated
+              </div>
+              <ul className="text-sm rounded-md border border-dashed border-border bg-muted/30 divide-y divide-border/70">
+                <li className="flex justify-between px-3 py-2">
+                  <span>
+                    Recurring across tracked years{" "}
+                    <span className="text-muted-foreground">
+                      ({lifetime.tracked_years.toFixed(1)} yr)
+                    </span>
+                  </span>
+                  <span className="tabular-nums">
+                    {t.est}{" "}
+                    {formatMoney(lifetime.recurring_tracked_minor, moneySettings)}
+                  </span>
+                </li>
+                {lifetime.gap_km > 0 && (
+                  <li className="flex justify-between px-3 py-2">
+                    <span>Backfilled running cost (pre-tracking)</span>
+                    <span className="tabular-nums">
+                      {t.est}{" "}
+                      {formatMoney(lifetime.backfilled_running_minor, moneySettings)}
+                    </span>
+                  </li>
+                )}
+                {lifetime.gap_years > 0 && (
+                  <li className="flex justify-between px-3 py-2">
+                    <span>Backfilled yearly costs (pre-tracking)</span>
+                    <span className="tabular-nums">
+                      {t.est}{" "}
+                      {formatMoney(lifetime.backfilled_yearly_minor, moneySettings)}
+                    </span>
+                  </li>
+                )}
+                <li className="flex justify-between px-3 py-2">
+                  <span>Remembered repairs</span>
+                  <span className="tabular-nums">
+                    ≈ {formatMoney(lifetime.remembered_repairs_minor, moneySettings)}
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex justify-between items-baseline pt-2 border-t border-border">
+              <span className="font-display text-base">Lifetime total</span>
+              <span className="tabular-nums font-display text-lg">
+                {formatMoney(lifetime.total_minor, moneySettings)}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground mt-3">
+            Estimates recompute automatically as more real data is logged.
+          </p>
         </div>
-        <div className="kpi-card opacity-75">
-          <div className="kpi-label">Projection</div>
-          <p className="text-sm text-muted-foreground mt-1">Coming soon.</p>
-        </div>
+      )}
+
+      <div className="kpi-card opacity-75">
+        <div className="kpi-label">Projection</div>
+        <p className="text-sm text-muted-foreground mt-1">Coming soon.</p>
       </div>
     </div>
   );

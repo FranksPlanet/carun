@@ -230,6 +230,90 @@ export function lifetimeCostSoFar(
   return { actual_minor: actual, estimated_minor: estimated, total_minor: actual + estimated };
 }
 
+export type LifetimeBreakdown = {
+  // Actual (known) figures
+  purchase_price_minor: number;
+  logged_total_minor: number;
+  recurring_tracked_minor: number;
+  tracked_years: number;
+  // Estimated figures (pre-tracking)
+  gap_km: number;
+  gap_years: number;
+  per_km_variable_minor: number;
+  backfilled_running_minor: number;
+  backfilled_yearly_minor: number;
+  remembered_repairs_minor: number;
+  // Totals
+  actual_minor: number;
+  estimated_minor: number;
+  total_minor: number;
+};
+
+export function lifetimeBreakdown(
+  vehicle: VehicleRow,
+  expenses: ExpenseRow[],
+  recurring: RecurringRow[],
+  repairs: PastRepairRow[],
+): LifetimeBreakdown {
+  const logged_total_minor = totalLogged(expenses);
+  const yearlyRecurring = recurring.reduce((s, r) => s + r.amount_minor_per_year, 0);
+
+  // Tracked window
+  const sortedByDate = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
+  const firstLoggedDate = sortedByDate.length ? sortedByDate[0].date : null;
+  let tracked_years = 0;
+  if (firstLoggedDate) {
+    tracked_years = Math.max(
+      0,
+      (Date.now() - new Date(firstLoggedDate).getTime()) /
+        (1000 * 60 * 60 * 24 * 365.25),
+    );
+  }
+  const recurring_tracked_minor = Math.round(yearlyRecurring * tracked_years);
+
+  // Pre-tracking gap
+  let gap_km = 0;
+  let gap_years = 0;
+  if (expenses.length > 0) {
+    const sortedByOdo = [...expenses].sort((a, b) => a.odometer_km - b.odometer_km);
+    gap_km = Math.max(0, sortedByOdo[0].odometer_km - vehicle.purchase_odometer_km);
+    const purchase = new Date(vehicle.purchase_date).getTime();
+    const first = new Date(firstLoggedDate!).getTime();
+    gap_years = Math.max(0, (first - purchase) / (1000 * 60 * 60 * 24 * 365.25));
+  }
+
+  // Per-km variable rate (fuel + service + other) — admin is time-based
+  const km = trackedKm(expenses);
+  const by = totalsByCategory(expenses);
+  const variable = (by.fuel ?? 0) + (by.service ?? 0) + (by.other ?? 0);
+  const per_km_variable_minor = km > 0 ? variable / km : 0;
+
+  const backfilled_running_minor = Math.round(per_km_variable_minor * gap_km);
+  const backfilled_yearly_minor = Math.round(yearlyRecurring * gap_years);
+  const remembered_repairs_minor = repairs.reduce((s, r) => s + r.amount_minor, 0);
+
+  const actual_minor =
+    vehicle.purchase_price_minor + logged_total_minor + recurring_tracked_minor;
+  const estimated_minor =
+    backfilled_running_minor + backfilled_yearly_minor + remembered_repairs_minor;
+
+  return {
+    purchase_price_minor: vehicle.purchase_price_minor,
+    logged_total_minor,
+    recurring_tracked_minor,
+    tracked_years,
+    gap_km,
+    gap_years,
+    per_km_variable_minor,
+    backfilled_running_minor,
+    backfilled_yearly_minor,
+    remembered_repairs_minor,
+    actual_minor,
+    estimated_minor,
+    total_minor: actual_minor + estimated_minor,
+  };
+}
+
 export type ProjectionInput = {
   annual_km: number;
   fuel_price_per_liter_minor: number; // price in currency minor units per liter
