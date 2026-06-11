@@ -1,0 +1,120 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { t } from "@/lib/strings";
+
+export const Route = createFileRoute("/auth")({
+  head: () => ({
+    meta: [
+      { title: "Sign in — RunningCost" },
+      { name: "description", content: "Sign in to RunningCost to track your car's true cost per kilometer." },
+    ],
+  }),
+  component: AuthPage,
+});
+
+function AuthPage() {
+  const navigate = useNavigate();
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: window.location.origin },
+        });
+        if (error) throw error;
+        toast.success("Account created. You're signed in.");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+      navigate({ to: "/dashboard" });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Sign-in failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function oauth(provider: "google" | "apple") {
+    const result = await lovable.auth.signInWithOAuth(provider, {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) {
+      toast.error(result.error.message ?? "Sign-in failed");
+      return;
+    }
+    if (result.redirected) return;
+    navigate({ to: "/dashboard" });
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 mb-3">
+            <div className="size-9 rounded-md bg-primary/15 border border-primary/40 grid place-items-center">
+              <span className="font-display font-bold text-primary text-lg">R</span>
+            </div>
+            <span className="font-display uppercase tracking-widest text-sm">{t.appName}</span>
+          </div>
+          <h1 className="text-2xl font-display">{t.auth.title}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t.auth.subtitle}</p>
+        </div>
+
+        <form onSubmit={onSubmit} className="space-y-3">
+          <div>
+            <Label htmlFor="email">{t.auth.email}</Label>
+            <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="password">{t.auth.password}</Label>
+            <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+          </div>
+          <Button type="submit" className="w-full" disabled={loading}>
+            {mode === "signin" ? t.auth.signIn : t.auth.signUp}
+          </Button>
+        </form>
+
+        <div className="flex items-center gap-3 my-5">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs uppercase tracking-widest text-muted-foreground">{t.auth.or}</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <div className="space-y-2">
+          <Button variant="outline" className="w-full" onClick={() => oauth("google")}>
+            {t.auth.google}
+          </Button>
+          <Button variant="outline" className="w-full" onClick={() => oauth("apple")}>
+            {t.auth.apple}
+          </Button>
+        </div>
+
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          {mode === "signin" ? t.auth.needAccount : t.auth.haveAccount}{" "}
+          <button
+            type="button"
+            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+            className="text-primary hover:underline"
+          >
+            {mode === "signin" ? t.auth.signUp : t.auth.signIn}
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+}
