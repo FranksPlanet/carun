@@ -57,7 +57,7 @@ function Dashboard() {
     };
   }, [expenses]);
 
-  if (vehiclesQ.isLoading || profileQ.isLoading) {
+  if (vehiclesQ.isLoading || profileQ.isLoading || !vehiclesQ.isSuccess) {
     return <p className="text-muted-foreground">Loading…</p>;
   }
 
