@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicles ADD COLUMN IF NOT EXISTS current_odometer_km integer NOT NULL DEFAULT 0;

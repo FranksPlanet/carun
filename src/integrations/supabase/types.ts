@@ -251,6 +251,7 @@ export type Database = {
         Row: {
           created_at: string
           currency: string
+          current_odometer_km: number
           fuel_type: Database["public"]["Enums"]["fuel_type"]
           id: string
           name: string
@@ -264,6 +265,7 @@ export type Database = {
         Insert: {
           created_at?: string
           currency?: string
+          current_odometer_km?: number
           fuel_type: Database["public"]["Enums"]["fuel_type"]
           id?: string
           name: string
@@ -277,6 +279,7 @@ export type Database = {
         Update: {
           created_at?: string
           currency?: string
+          current_odometer_km?: number
           fuel_type?: Database["public"]["Enums"]["fuel_type"]
           id?: string
           name?: string
