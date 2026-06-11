@@ -11,14 +11,11 @@ import {
   totalLogged,
   consumptionPoints,
   averageConsumption,
-  categoryCostPerKm,
-  cumulativeSpend,
 } from "@/lib/calc";
 import { defaultSettings, formatCostPerKm, formatDistance, formatConsumption, formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { t } from "@/lib/strings";
-import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — RunningCost" }] }),
