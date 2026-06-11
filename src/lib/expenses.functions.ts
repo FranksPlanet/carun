@@ -1,0 +1,71 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+const Category = z.enum(["fuel", "service", "admin", "other"]);
+
+const CreateExpenseSchema = z.object({
+  vehicle_id: z.string().uuid(),
+  date: z.string(),
+  odometer_km: z.number().int().min(0).max(2_000_000),
+  category: Category,
+  amount_minor: z.number().int().min(0),
+  currency: z.string().default("CZK"),
+  liters: z.number().min(0).max(1000).optional().nullable(),
+  full_tank: z.boolean().optional().nullable(),
+  tags: z.array(z.string().max(30)).max(10).default([]),
+  note: z.string().max(500).optional().nullable(),
+  receipt_path: z.string().max(500).optional().nullable(),
+});
+
+export const listExpenses = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ vehicle_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: out, error } = await context.supabase
+      .from("expenses")
+      .select("*")
+      .eq("vehicle_id", data.vehicle_id)
+      .order("date", { ascending: false });
+    if (error) throw new Error(error.message);
+    return out ?? [];
+  });
+
+export const createExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => CreateExpenseSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: out, error } = await context.supabase
+      .from("expenses")
+      .insert({ ...data, user_id: context.userId })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return out;
+  });
+
+const UpdateExpenseSchema = CreateExpenseSchema.partial().extend({ id: z.string().uuid() });
+
+export const updateExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => UpdateExpenseSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { id, ...rest } = data;
+    const { data: out, error } = await context.supabase
+      .from("expenses")
+      .update(rest)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return out;
+  });
+
+export const deleteExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("expenses").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
