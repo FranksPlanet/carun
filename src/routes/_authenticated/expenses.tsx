@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORIES, CATEGORY_META, CategoryIcon } from "@/lib/categories";
 import { listVehicles } from "@/lib/vehicles.functions";
 import {
@@ -48,9 +48,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Download, Camera, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { t } from "@/lib/strings";
+import { scanReceipt } from "@/lib/ocr.functions";
+import { ImportExpensesDialog } from "@/components/import-expenses-dialog";
 import {
   AreaChart,
   Area,
@@ -160,6 +162,55 @@ function ExpensesPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm());
+  const [importOpen, setImportOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const scanRef = useRef<HTMLInputElement>(null);
+  const scanFn = useServerFn(scanReceipt);
+
+  async function handleScan(file: File) {
+    if (!vehicle) return;
+    setScanning(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => {
+          const s = String(r.result || "");
+          const i = s.indexOf(",");
+          resolve(i >= 0 ? s.slice(i + 1) : s);
+        };
+        r.onerror = () => reject(r.error);
+        r.readAsDataURL(file);
+      });
+      const res = await scanFn({
+        data: { image_base64: base64, mime_type: file.type || "image/jpeg" },
+      });
+      const cat = (res.category ?? "fuel") as Category;
+      setForm({
+        ...emptyForm(),
+        odometer: vehicle.current_odometer_km ? String(vehicle.current_odometer_km) : "",
+        date: res.date || new Date().toISOString().slice(0, 10),
+        category: cat,
+        amount: res.total != null ? String(res.total) : "",
+        liters: res.liters != null ? String(res.liters) : "",
+        note: res.station ?? "",
+      });
+      setDialogOpen(true);
+      if (res.total == null && res.date == null) {
+        toast.message("Couldn't read the receipt — please fill it in.");
+      } else {
+        toast.success("Receipt scanned — please review and save.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't scan receipt");
+      setForm({
+        ...emptyForm(),
+        odometer: vehicle.current_odometer_km ? String(vehicle.current_odometer_km) : "",
+      });
+      setDialogOpen(true);
+    } finally {
+      setScanning(false);
+    }
+  }
 
   const saveMut = useMutation({
     mutationFn: async (f: FormState) => {
@@ -323,7 +374,30 @@ function ExpensesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-semibold tracking-tight">{t.nav.expenses}</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            ref={scanRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleScan(f);
+              if (scanRef.current) scanRef.current.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={() => scanRef.current?.click()}
+            disabled={scanning}
+          >
+            <Camera className="size-4 mr-1" /> {scanning ? "Scanning…" : "Scan receipt"}
+          </Button>
+          <Button variant="outline" className="rounded-full" onClick={() => setImportOpen(true)}>
+            <Upload className="size-4 mr-1" /> Import
+          </Button>
           <Button variant="outline" className="rounded-full" onClick={exportCsv} disabled={expenses.length === 0}>
             <Download className="size-4 mr-1" /> Export CSV
           </Button>
@@ -332,6 +406,16 @@ function ExpensesPage() {
           </Button>
         </div>
       </div>
+
+      {vehicle && (
+        <ImportExpensesDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          vehicleId={vehicle.id}
+          currency={currency}
+        />
+      )}
+
 
       {vehicles.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">

@@ -255,6 +255,7 @@ export type Database = {
           fuel_type: Database["public"]["Enums"]["fuel_type"]
           id: string
           name: string
+          photo_path: string | null
           plate: string | null
           purchase_date: string
           purchase_odometer_km: number
@@ -269,6 +270,7 @@ export type Database = {
           fuel_type: Database["public"]["Enums"]["fuel_type"]
           id?: string
           name: string
+          photo_path?: string | null
           plate?: string | null
           purchase_date: string
           purchase_odometer_km?: number
@@ -283,6 +285,7 @@ export type Database = {
           fuel_type?: Database["public"]["Enums"]["fuel_type"]
           id?: string
           name?: string
+          photo_path?: string | null
           plate?: string | null
           purchase_date?: string
           purchase_odometer_km?: number

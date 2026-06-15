@@ -13,6 +13,7 @@ const CreateVehicleSchema = z.object({
   purchase_price_minor: z.number().int().min(0),
   currency: z.string().min(1).max(8).default("CZK"),
   current_odometer_km: z.number().int().min(0).max(2_000_000).default(0),
+  photo_path: z.string().max(500).optional().nullable(),
 });
 
 export const listVehicles = createServerFn({ method: "GET" })
