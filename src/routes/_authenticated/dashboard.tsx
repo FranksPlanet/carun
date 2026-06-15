@@ -89,17 +89,25 @@ function Dashboard() {
       )}
 
       {vehicle && (
-        <div className="kpi-card kpi-hero">
-          <div className="flex items-baseline justify-between flex-wrap gap-2">
-            <div>
-              <div className="text-xl font-semibold">{vehicle.name}</div>
-              <div className="text-sm text-muted-foreground">
-                {vehicle.plate ? `${vehicle.plate} · ` : ""}{cap(vehicle.fuel_type)}
+        <div className="space-y-3">
+          <VehiclePhoto
+            vehicleId={vehicle.id}
+            photoPath={(vehicle as any).photo_path}
+            vehicleName={vehicle.name}
+          />
+          <div className="kpi-card kpi-hero">
+            <div className="flex items-baseline justify-between flex-wrap gap-2">
+              <div>
+                <div className="text-xl font-semibold">{vehicle.name}</div>
+                <div className="text-sm text-muted-foreground">
+                  {vehicle.plate ? `${vehicle.plate} · ` : ""}{cap(vehicle.fuel_type)}
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
+
 
       <div className="grid grid-cols-2 gap-3">
         <div className="kpi-card">
