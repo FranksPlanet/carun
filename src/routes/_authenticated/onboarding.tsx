@@ -174,7 +174,7 @@ function OnboardingPage() {
         <div className="text-xs text-muted-foreground uppercase tracking-widest font-display">
           {t.onboarding.step(step, TOTAL)}
         </div>
-        <h1 className="font-display text-2xl mt-1">{stepTitle(step)}</h1>
+        <h1 className="text-2xl font-semibold mt-1">{stepTitle(step)}</h1>
         <p className="text-muted-foreground text-sm mt-1">{stepHint(step)}</p>
       </div>
 

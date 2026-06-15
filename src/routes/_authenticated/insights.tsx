@@ -40,7 +40,7 @@ import { Plus } from "lucide-react";
 import { t } from "@/lib/strings";
 
 export const Route = createFileRoute("/_authenticated/insights")({
-  head: () => ({ meta: [{ title: "Insights — RunningCost" }] }),
+  head: () => ({ meta: [{ title: "Insights — RevTab" }] }),
   component: InsightsPage,
 });
 
