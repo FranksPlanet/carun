@@ -188,6 +188,21 @@ function ExpensesPage() {
     setDialogOpen(true);
   }
 
+  // FAB / nav trigger to open add dialog
+  useEffect(() => {
+    function handler() {
+      if (!vehicle) return;
+      openAdd();
+    }
+    window.addEventListener("revtab:add-expense", handler);
+    if (typeof window !== "undefined" && window.location.hash === "#add" && vehicle) {
+      openAdd();
+      history.replaceState(null, "", window.location.pathname);
+    }
+    return () => window.removeEventListener("revtab:add-expense", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicle?.id]);
+
   function openEdit(e: ExpenseRow) {
     setForm({
       id: e.id,
