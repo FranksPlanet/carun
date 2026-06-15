@@ -374,7 +374,30 @@ function ExpensesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-semibold tracking-tight">{t.nav.expenses}</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            ref={scanRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleScan(f);
+              if (scanRef.current) scanRef.current.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            className="rounded-full"
+            onClick={() => scanRef.current?.click()}
+            disabled={scanning}
+          >
+            <Camera className="size-4 mr-1" /> {scanning ? "Scanning…" : "Scan receipt"}
+          </Button>
+          <Button variant="outline" className="rounded-full" onClick={() => setImportOpen(true)}>
+            <Upload className="size-4 mr-1" /> Import
+          </Button>
           <Button variant="outline" className="rounded-full" onClick={exportCsv} disabled={expenses.length === 0}>
             <Download className="size-4 mr-1" /> Export CSV
           </Button>
@@ -383,6 +406,16 @@ function ExpensesPage() {
           </Button>
         </div>
       </div>
+
+      {vehicle && (
+        <ImportExpensesDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          vehicleId={vehicle.id}
+          currency={currency}
+        />
+      )}
+
 
       {vehicles.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
