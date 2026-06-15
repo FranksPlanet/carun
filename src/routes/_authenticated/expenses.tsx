@@ -162,6 +162,55 @@ function ExpensesPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm());
+  const [importOpen, setImportOpen] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const scanRef = useRef<HTMLInputElement>(null);
+  const scanFn = useServerFn(scanReceipt);
+
+  async function handleScan(file: File) {
+    if (!vehicle) return;
+    setScanning(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => {
+          const s = String(r.result || "");
+          const i = s.indexOf(",");
+          resolve(i >= 0 ? s.slice(i + 1) : s);
+        };
+        r.onerror = () => reject(r.error);
+        r.readAsDataURL(file);
+      });
+      const res = await scanFn({
+        data: { image_base64: base64, mime_type: file.type || "image/jpeg" },
+      });
+      const cat = (res.category ?? "fuel") as Category;
+      setForm({
+        ...emptyForm(),
+        odometer: vehicle.current_odometer_km ? String(vehicle.current_odometer_km) : "",
+        date: res.date || new Date().toISOString().slice(0, 10),
+        category: cat,
+        amount: res.total != null ? String(res.total) : "",
+        liters: res.liters != null ? String(res.liters) : "",
+        note: res.station ?? "",
+      });
+      setDialogOpen(true);
+      if (res.total == null && res.date == null) {
+        toast.message("Couldn't read the receipt — please fill it in.");
+      } else {
+        toast.success("Receipt scanned — please review and save.");
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't scan receipt");
+      setForm({
+        ...emptyForm(),
+        odometer: vehicle.current_odometer_km ? String(vehicle.current_odometer_km) : "",
+      });
+      setDialogOpen(true);
+    } finally {
+      setScanning(false);
+    }
+  }
 
   const saveMut = useMutation({
     mutationFn: async (f: FormState) => {
