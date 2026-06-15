@@ -284,21 +284,30 @@ function ExpensesPage() {
       : null;
 
   const catLabels: Record<Category, string> = {
-    fuel: "Fuel",
-    service: "Service",
-    admin: "Admin",
-    other: "Other",
+    fuel: CATEGORY_META.fuel.label,
+    service: CATEGORY_META.service.label,
+    admin: CATEGORY_META.admin.label,
+    other: CATEGORY_META.other.label,
   };
+
+  const donutData = CATEGORIES.map((c) => ({
+    name: catLabels[c],
+    cat: c,
+    value: moneyMinorToMajor(stats.by[c] ?? 0, currency),
+    minor: stats.by[c] ?? 0,
+    color: CATEGORY_META[c].color,
+  })).filter((d) => d.value > 0);
+  const totalMajor = donutData.reduce((s, d) => s + d.value, 0);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="font-display text-2xl">{t.nav.expenses}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t.nav.expenses}</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportCsv} disabled={expenses.length === 0}>
+          <Button variant="outline" className="rounded-full" onClick={exportCsv} disabled={expenses.length === 0}>
             <Download className="size-4 mr-1" /> Export CSV
           </Button>
-          <Button onClick={openAdd}>
+          <Button onClick={openAdd} className="rounded-full">
             <Plus className="size-4 mr-1" /> Add expense
           </Button>
         </div>
@@ -322,21 +331,70 @@ function ExpensesPage() {
       {/* Breakdown */}
       <div className="grid md:grid-cols-2 gap-4">
         <div className="kpi-card">
-          <div className="kpi-label mb-3">Totals by category</div>
-          <ul className="space-y-2 text-sm">
-            {(Object.keys(catLabels) as Category[]).map((c) => (
-              <li key={c} className="flex justify-between">
-                <span className="text-muted-foreground">{catLabels[c]}</span>
-                <span className="font-display">
-                  {formatMoney(stats.by[c] ?? 0, moneySettings)}
-                </span>
-              </li>
-            ))}
-            <li className="flex justify-between border-t border-border pt-2 mt-2">
-              <span>Total logged</span>
-              <span className="font-display">{formatMoney(stats.total, moneySettings)}</span>
-            </li>
-          </ul>
+          <div className="text-sm font-semibold mb-3">Breakdown by category</div>
+          {donutData.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">
+              No expenses logged yet.
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="relative size-40 shrink-0">
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={donutData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={48}
+                      outerRadius={75}
+                      paddingAngle={2}
+                      stroke="var(--color-card)"
+                      strokeWidth={2}
+                    >
+                      {donutData.map((d) => (
+                        <Cell key={d.cat} fill={d.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 12,
+                      }}
+                      formatter={(v: any) =>
+                        formatMoney(Math.round(Number(v) * 100), moneySettings)
+                      }
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 grid place-items-center pointer-events-none text-center">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</div>
+                    <div className="text-sm font-semibold num">
+                      {formatMoney(stats.total, moneySettings)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <ul className="flex-1 w-full space-y-2 text-sm">
+                {donutData.map((d) => {
+                  const pct = totalMajor > 0 ? (d.value / totalMajor) * 100 : 0;
+                  return (
+                    <li key={d.cat} className="flex items-center gap-3">
+                      <CategoryIcon category={d.cat} className="size-4 shrink-0" />
+                      <span className="flex-1 truncate">{d.name}</span>
+                      <span className="text-muted-foreground tabular-nums text-xs w-10 text-right">
+                        {pct.toFixed(0)}%
+                      </span>
+                      <span className="num tabular-nums w-20 text-right">
+                        {formatMoney(d.minor, moneySettings)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
         <div className="kpi-card">
           <div className="kpi-label mb-2">Spend over time</div>
