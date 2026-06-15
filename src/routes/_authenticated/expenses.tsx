@@ -133,6 +133,25 @@ function ExpensesPage() {
     };
   }, [expenses, currency]);
 
+  const stackedCum = useMemo(() => {
+    const sorted = [...expenses].sort((a, b) =>
+      a.date === b.date ? a.odometer_km - b.odometer_km : a.date < b.date ? -1 : 1,
+    );
+    const running: Record<Category, number> = { fuel: 0, service: 0, admin: 0, other: 0 };
+    const byDate = new Map<string, any>();
+    for (const e of sorted) {
+      running[e.category as Category] += e.amount_minor;
+      byDate.set(e.date, {
+        date: e.date,
+        fuel: moneyMinorToMajor(running.fuel, currency),
+        service: moneyMinorToMajor(running.service, currency),
+        admin: moneyMinorToMajor(running.admin, currency),
+        other: moneyMinorToMajor(running.other, currency),
+      });
+    }
+    return Array.from(byDate.values());
+  }, [expenses, currency]);
+
   const consPointsByOdo = useMemo(() => {
     const m = new Map<number, number>();
     for (const p of consumptionPoints(expenses)) m.set(p.odometer_km, p.l_per_100km);
