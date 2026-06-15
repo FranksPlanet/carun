@@ -417,34 +417,96 @@ function ExpensesPage() {
           )}
         </div>
         <div className="kpi-card">
-          <div className="text-sm font-semibold mb-2">Spend over time</div>
+          <div className="flex items-baseline justify-between mb-2">
+            <div className="text-sm font-semibold">Cumulative spend</div>
+            <div className="text-xs text-muted-foreground num tabular-nums">
+              {formatMoney(stats.total, moneySettings)}
+            </div>
+          </div>
           <div className="h-48">
-            {stats.cum.length === 0 ? (
+            {stackedCum.length === 0 ? (
               <div className="h-full grid place-items-center text-muted-foreground text-sm">
                 No data yet
               </div>
             ) : (
               <ResponsiveContainer>
-                <AreaChart data={stats.cum}>
+                <AreaChart data={stackedCum} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="exp1" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.6} />
-                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
-                    </linearGradient>
+                    {CATEGORIES.map((c) => (
+                      <linearGradient key={c} id={`exp-${c}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={CATEGORY_META[c].color} stopOpacity={0.85} />
+                        <stop offset="100%" stopColor={CATEGORY_META[c].color} stopOpacity={0.55} />
+                      </linearGradient>
+                    ))}
                   </defs>
-                  <XAxis dataKey="date" tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }} />
-                  <YAxis tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }} />
+                  <CartesianGrid stroke="var(--color-border)" strokeDasharray="2 4" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                    tickFormatter={(d: string) => {
+                      const dt = new Date(d);
+                      return isNaN(+dt)
+                        ? d
+                        : dt.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+                    }}
+                    minTickGap={28}
+                    tickLine={false}
+                    axisLine={{ stroke: "var(--color-border)" }}
+                  />
+                  <YAxis
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                    width={40}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v: number) =>
+                      v >= 1000 ? `${Math.round(v / 1000)}k` : String(v)
+                    }
+                  />
                   <Tooltip
                     contentStyle={{
                       background: "var(--color-card)",
                       border: "1px solid var(--color-border)",
+                      borderRadius: 12,
+                      fontSize: 12,
                     }}
+                    formatter={(v: any, name: any) => [
+                      formatMoney(Math.round(Number(v) * 100), moneySettings),
+                      catLabels[name as Category] ?? name,
+                    ]}
                   />
-                  <Area type="monotone" dataKey="total" stroke="var(--color-primary)" fill="url(#exp1)" />
+                  {CATEGORIES.map((c) => (
+                    <Area
+                      key={c}
+                      type="monotone"
+                      dataKey={c}
+                      stackId="1"
+                      stroke={CATEGORY_META[c].color}
+                      strokeWidth={1}
+                      fill={`url(#exp-${c})`}
+                    />
+                  ))}
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </div>
+          {stackedCum.length > 0 && (
+            <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
+              {CATEGORIES.filter((c) => (stats.by[c] ?? 0) > 0).map((c) => (
+                <li key={c} className="flex items-center gap-1.5">
+                  <span
+                    className="size-2.5 rounded-sm"
+                    style={{ backgroundColor: CATEGORY_META[c].color }}
+                    aria-hidden
+                  />
+                  <CategoryIcon category={c} className="size-3.5" />
+                  <span className="text-muted-foreground">{catLabels[c]}</span>
+                  <span className="num tabular-nums font-medium">
+                    {formatMoney(stats.by[c] ?? 0, moneySettings)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
