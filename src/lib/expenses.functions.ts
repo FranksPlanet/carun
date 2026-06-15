@@ -69,3 +69,20 @@ export const deleteExpense = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+const BulkSchema = z.object({
+  rows: z.array(CreateExpenseSchema).min(1).max(1000),
+});
+
+export const bulkCreateExpenses = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => BulkSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const payload = data.rows.map((r) => ({ ...r, user_id: context.userId }));
+    const { data: out, error } = await context.supabase
+      .from("expenses")
+      .insert(payload)
+      .select();
+    if (error) throw new Error(error.message);
+    return { inserted: out?.length ?? 0 };
+  });
