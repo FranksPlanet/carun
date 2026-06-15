@@ -115,39 +115,49 @@ function AuthLayout() {
         <Outlet />
       </main>
 
-      {/* Mobile bottom nav with center FAB */}
+      {/* Mobile bottom nav with prominent + action */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-20">
         <div className="bg-card/95 backdrop-blur border-t border-border pb-[env(safe-area-inset-bottom)]">
-          <div className="grid grid-cols-3 relative">
-            {[tabs[0], tabs[1], tabs[2]].map((tab, idx) => {
-              const Icon = tab.icon;
-              const active = pathname.startsWith(tab.to);
-              // Place FAB between Expenses and Insights — but we want it visually centered.
-              // Use 3-col layout where middle col contains Expenses, and FAB floats above center.
-              return (
-                <Link
-                  key={tab.to}
-                  to={tab.to}
-                  className={`flex flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium ${
-                    active ? "text-primary" : "text-muted-foreground"
-                  }`}
-                  style={idx === 1 ? { paddingTop: "1.75rem" } : undefined}
-                >
-                  <Icon className="size-5" />
-                  {tab.label}
-                </Link>
-              );
-            })}
-            <button
-              onClick={openAddExpense}
-              aria-label="Add expense"
-              className="absolute left-1/2 -translate-x-1/2 -top-6 size-14 rounded-full bg-primary text-primary-foreground shadow-lg grid place-items-center active:scale-95 transition-transform"
-            >
-              <Plus className="size-6" />
-            </button>
+          <div className="grid grid-cols-4 items-center">
+            <BottomTab to={tabs[0].to} label={tabs[0].label} Icon={tabs[0].icon} active={pathname.startsWith(tabs[0].to)} />
+            <BottomTab to={tabs[1].to} label={tabs[1].label} Icon={tabs[1].icon} active={pathname.startsWith(tabs[1].to)} />
+            <div className="flex justify-center">
+              <button
+                onClick={openAddExpense}
+                aria-label="Add expense"
+                className="-mt-6 size-14 rounded-full bg-primary text-primary-foreground shadow-lg grid place-items-center active:scale-95 transition-transform"
+              >
+                <Plus className="size-6" />
+              </button>
+            </div>
+            <BottomTab to={tabs[2].to} label={tabs[2].label} Icon={tabs[2].icon} active={pathname.startsWith(tabs[2].to)} />
           </div>
         </div>
       </nav>
     </div>
+  );
+}
+
+function BottomTab({
+  to,
+  label,
+  Icon,
+  active,
+}: {
+  to: string;
+  label: string;
+  Icon: typeof Plus;
+  active: boolean;
+}) {
+  return (
+    <Link
+      to={to}
+      className={`flex flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium ${
+        active ? "text-primary" : "text-muted-foreground"
+      }`}
+    >
+      <Icon className="size-5" />
+      {label}
+    </Link>
   );
 }
