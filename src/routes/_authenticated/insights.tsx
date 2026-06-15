@@ -307,7 +307,7 @@ function InsightsPage() {
 
           <div className="space-y-3">
             <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+              <div className="text-xs text-muted-foreground mb-1">
                 Actual
               </div>
               <ul className="text-sm divide-y divide-border rounded-md border border-border">
@@ -327,7 +327,7 @@ function InsightsPage() {
             </div>
 
             <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+              <div className="text-xs text-muted-foreground mb-1">
                 Estimated
               </div>
               <ul className="text-sm rounded-md border border-dashed border-border bg-muted/30 divide-y divide-border/70">

@@ -67,11 +67,11 @@ function AuthPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-3">
             <div className="size-9 rounded-md bg-primary/15 border border-primary/40 grid place-items-center">
-              <span className="font-display font-bold text-primary text-lg">R</span>
+              <span className="font-bold text-primary text-lg">R</span>
             </div>
-            <span className="font-display uppercase tracking-widest text-sm">{t.appName}</span>
+            <span className="font-display text-sm">{t.appName}</span>
           </div>
-          <h1 className="text-2xl font-display">{t.auth.title}</h1>
+          <h1 className="text-2xl font-semibold">{t.auth.title}</h1>
           <p className="text-sm text-muted-foreground mt-1">{t.auth.subtitle}</p>
         </div>
 
@@ -91,7 +91,7 @@ function AuthPage() {
 
         <div className="flex items-center gap-3 my-5">
           <div className="h-px flex-1 bg-border" />
-          <span className="text-xs uppercase tracking-widest text-muted-foreground">{t.auth.or}</span>
+          <span className="text-xs text-muted-foreground">{t.auth.or}</span>
           <div className="h-px flex-1 bg-border" />
         </div>
 
