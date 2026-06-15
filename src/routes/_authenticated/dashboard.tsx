@@ -16,6 +16,7 @@ import { defaultSettings, formatCostPerKm, formatDistance, formatConsumption, fo
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { t } from "@/lib/strings";
+import { VehiclePhoto } from "@/components/vehicle-photo";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — RevTab" }] }),
