@@ -128,7 +128,7 @@ function InsightsPage() {
   if (vehicles.length === 0) {
     return (
       <div className="text-center py-16">
-        <h1 className="font-display text-2xl mb-2">Insights</h1>
+        <h1 className="text-2xl font-semibold mb-2">Insights</h1>
         <p className="text-muted-foreground mb-6">{t.empty.noVehicles}</p>
         <Button onClick={() => navigate({ to: "/onboarding" })}>
           <Plus className="size-4 mr-1" /> Add vehicle
@@ -143,7 +143,7 @@ function InsightsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="font-display text-2xl">Insights</h1>
+        <h1 className="text-2xl font-semibold">Insights</h1>
       </div>
 
       {vehicles.length > 1 && (
@@ -371,8 +371,8 @@ function InsightsPage() {
             </div>
 
             <div className="flex justify-between items-baseline pt-2 border-t border-border">
-              <span className="font-display text-base">Lifetime total</span>
-              <span className="tabular-nums font-display text-lg">
+              <span className="text-base font-semibold">Lifetime total</span>
+              <span className="tabular-nums text-lg font-semibold">
                 {formatMoney(lifetime.total_minor, moneySettings)}
               </span>
             </div>

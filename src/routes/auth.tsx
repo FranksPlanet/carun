@@ -69,7 +69,7 @@ function AuthPage() {
             <div className="size-9 rounded-md bg-primary/15 border border-primary/40 grid place-items-center">
               <span className="font-bold text-primary text-lg">R</span>
             </div>
-            <span className="font-display text-sm">{t.appName}</span>
+            <span className="text-sm font-semibold">{t.appName}</span>
           </div>
           <h1 className="text-2xl font-semibold">{t.auth.title}</h1>
           <p className="text-sm text-muted-foreground mt-1">{t.auth.subtitle}</p>

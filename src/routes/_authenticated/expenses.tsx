@@ -369,7 +369,7 @@ function ExpensesPage() {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 grid place-items-center pointer-events-none text-center">
                   <div>
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total</div>
+                    <div className="text-[10px] text-muted-foreground">Total</div>
                     <div className="text-sm font-semibold num">
                       {formatMoney(stats.total, moneySettings)}
                     </div>
