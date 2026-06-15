@@ -23,9 +23,7 @@ function IndexPage() {
 
   return (
     <div className="min-h-screen grid place-items-center bg-background">
-      <p className="text-sm uppercase tracking-widest text-muted-foreground font-display">
-        Loading…
-      </p>
+      <p className="text-sm text-muted-foreground">Loading…</p>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CATEGORIES, CATEGORY_META, CategoryIcon } from "@/lib/categories";
 import { listVehicles } from "@/lib/vehicles.functions";
 import {
   listExpenses,
@@ -57,10 +58,13 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/expenses")({
-  head: () => ({ meta: [{ title: "Expenses — RunningCost" }] }),
+  head: () => ({ meta: [{ title: "Expenses — RevTab" }] }),
   component: ExpensesPage,
 });
 
@@ -184,6 +188,21 @@ function ExpensesPage() {
     setDialogOpen(true);
   }
 
+  // FAB / nav trigger to open add dialog
+  useEffect(() => {
+    function handler() {
+      if (!vehicle) return;
+      openAdd();
+    }
+    window.addEventListener("revtab:add-expense", handler);
+    if (typeof window !== "undefined" && window.location.hash === "#add" && vehicle) {
+      openAdd();
+      history.replaceState(null, "", window.location.pathname);
+    }
+    return () => window.removeEventListener("revtab:add-expense", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicle?.id]);
+
   function openEdit(e: ExpenseRow) {
     setForm({
       id: e.id,
@@ -248,7 +267,7 @@ function ExpensesPage() {
   if (vehicles.length === 0) {
     return (
       <div className="text-center py-16">
-        <h1 className="font-display text-2xl mb-2">{t.nav.expenses}</h1>
+        <h1 className="text-2xl font-semibold mb-2">{t.nav.expenses}</h1>
         <p className="text-muted-foreground mb-6">{t.empty.noVehicles}</p>
         <Button onClick={() => navigate({ to: "/onboarding" })}>
           <Plus className="size-4 mr-1" /> Add vehicle
@@ -265,21 +284,30 @@ function ExpensesPage() {
       : null;
 
   const catLabels: Record<Category, string> = {
-    fuel: "Fuel",
-    service: "Service",
-    admin: "Admin",
-    other: "Other",
+    fuel: CATEGORY_META.fuel.label,
+    service: CATEGORY_META.service.label,
+    admin: CATEGORY_META.admin.label,
+    other: CATEGORY_META.other.label,
   };
+
+  const donutData = CATEGORIES.map((c) => ({
+    name: catLabels[c],
+    cat: c,
+    value: moneyMinorToMajor(stats.by[c] ?? 0, currency),
+    minor: stats.by[c] ?? 0,
+    color: CATEGORY_META[c].color,
+  })).filter((d) => d.value > 0);
+  const totalMajor = donutData.reduce((s, d) => s + d.value, 0);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="font-display text-2xl">{t.nav.expenses}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t.nav.expenses}</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportCsv} disabled={expenses.length === 0}>
+          <Button variant="outline" className="rounded-full" onClick={exportCsv} disabled={expenses.length === 0}>
             <Download className="size-4 mr-1" /> Export CSV
           </Button>
-          <Button onClick={openAdd}>
+          <Button onClick={openAdd} className="rounded-full">
             <Plus className="size-4 mr-1" /> Add expense
           </Button>
         </div>
@@ -303,24 +331,73 @@ function ExpensesPage() {
       {/* Breakdown */}
       <div className="grid md:grid-cols-2 gap-4">
         <div className="kpi-card">
-          <div className="kpi-label mb-3">Totals by category</div>
-          <ul className="space-y-2 text-sm">
-            {(Object.keys(catLabels) as Category[]).map((c) => (
-              <li key={c} className="flex justify-between">
-                <span className="text-muted-foreground">{catLabels[c]}</span>
-                <span className="font-display">
-                  {formatMoney(stats.by[c] ?? 0, moneySettings)}
-                </span>
-              </li>
-            ))}
-            <li className="flex justify-between border-t border-border pt-2 mt-2">
-              <span>Total logged</span>
-              <span className="font-display">{formatMoney(stats.total, moneySettings)}</span>
-            </li>
-          </ul>
+          <div className="text-sm font-semibold mb-3">Breakdown by category</div>
+          {donutData.length === 0 ? (
+            <div className="text-sm text-muted-foreground py-8 text-center">
+              No expenses logged yet.
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="relative size-40 shrink-0">
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={donutData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={48}
+                      outerRadius={75}
+                      paddingAngle={2}
+                      stroke="var(--color-card)"
+                      strokeWidth={2}
+                    >
+                      {donutData.map((d) => (
+                        <Cell key={d.cat} fill={d.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
+                        borderRadius: 12,
+                      }}
+                      formatter={(v: any) =>
+                        formatMoney(Math.round(Number(v) * 100), moneySettings)
+                      }
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 grid place-items-center pointer-events-none text-center">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground">Total</div>
+                    <div className="text-sm font-semibold num">
+                      {formatMoney(stats.total, moneySettings)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <ul className="flex-1 w-full space-y-2 text-sm">
+                {donutData.map((d) => {
+                  const pct = totalMajor > 0 ? (d.value / totalMajor) * 100 : 0;
+                  return (
+                    <li key={d.cat} className="flex items-center gap-3">
+                      <CategoryIcon category={d.cat} className="size-4 shrink-0" />
+                      <span className="flex-1 truncate">{d.name}</span>
+                      <span className="text-muted-foreground tabular-nums text-xs w-10 text-right">
+                        {pct.toFixed(0)}%
+                      </span>
+                      <span className="num tabular-nums w-20 text-right">
+                        {formatMoney(d.minor, moneySettings)}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
         <div className="kpi-card">
-          <div className="kpi-label mb-2">Spend over time</div>
+          <div className="text-sm font-semibold mb-2">Spend over time</div>
           <div className="h-48">
             {stats.cum.length === 0 ? (
               <div className="h-full grid place-items-center text-muted-foreground text-sm">
@@ -368,9 +445,17 @@ function ExpensesPage() {
               const cons = e.category === "fuel" ? consPointsByOdo.get(e.odometer_km) ?? null : null;
               return (
                 <li key={e.id} className="py-3 flex items-center gap-3">
+                  <div
+                    className="size-9 shrink-0 rounded-full grid place-items-center"
+                    style={{
+                      backgroundColor: `color-mix(in oklab, ${CATEGORY_META[e.category].color} 18%, var(--color-card))`,
+                    }}
+                  >
+                    <CategoryIcon category={e.category} className="size-4" />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="font-display text-sm">{catLabels[e.category]}</span>
+                      <span className="text-sm font-semibold">{catLabels[e.category]}</span>
                       <span className="text-xs text-muted-foreground">{e.date}</span>
                       <span className="text-xs text-muted-foreground">
                         · {formatDistance(e.odometer_km, settings)}
@@ -388,7 +473,7 @@ function ExpensesPage() {
                       </div>
                     )}
                   </div>
-                  <div className="font-display whitespace-nowrap">
+                  <div className="whitespace-nowrap font-semibold num tabular-nums">
                     {formatMoney(e.amount_minor, moneySettings)}
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => openEdit(e)} aria-label="Edit">

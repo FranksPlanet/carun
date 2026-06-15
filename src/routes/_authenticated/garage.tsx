@@ -7,7 +7,7 @@ import { Plus } from "lucide-react";
 import { t } from "@/lib/strings";
 
 export const Route = createFileRoute("/_authenticated/garage")({
-  head: () => ({ meta: [{ title: "Garage — RunningCost" }] }),
+  head: () => ({ meta: [{ title: "Garage — RevTab" }] }),
   component: GaragePage,
 });
 
@@ -20,7 +20,7 @@ function GaragePage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl">{t.nav.garage}</h1>
+        <h1 className="text-2xl font-semibold">{t.nav.garage}</h1>
         <Button onClick={() => navigate({ to: "/onboarding" })}>
           <Plus className="size-4 mr-1" /> Add vehicle
         </Button>

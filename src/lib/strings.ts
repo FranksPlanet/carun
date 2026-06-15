@@ -1,7 +1,7 @@
 // Centralized UI copy. All user-facing strings live here so a second language
 // can be added later without touching components.
 export const t = {
-  appName: "RunningCost",
+  appName: "RevTab",
   tagline: "Know what every kilometer really costs.",
 
   nav: {
@@ -15,7 +15,7 @@ export const t = {
   },
 
   auth: {
-    title: "Welcome to RunningCost",
+    title: "Welcome to RevTab",
     subtitle: "Track every kilometer your car costs you.",
     email: "Email",
     password: "Password",

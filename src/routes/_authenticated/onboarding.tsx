@@ -46,7 +46,7 @@ type RecurringDraft = {
 };
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
-  head: () => ({ meta: [{ title: "Add vehicle — RunningCost" }] }),
+  head: () => ({ meta: [{ title: "Add vehicle — RevTab" }] }),
   component: OnboardingPage,
 });
 
@@ -171,10 +171,10 @@ function OnboardingPage() {
   return (
     <div className="max-w-xl mx-auto space-y-6">
       <div>
-        <div className="text-xs text-muted-foreground uppercase tracking-widest font-display">
+        <div className="text-xs font-semibold text-muted-foreground">
           {t.onboarding.step(step, TOTAL)}
         </div>
-        <h1 className="font-display text-2xl mt-1">{stepTitle(step)}</h1>
+        <h1 className="text-2xl font-semibold mt-1">{stepTitle(step)}</h1>
         <p className="text-muted-foreground text-sm mt-1">{stepHint(step)}</p>
       </div>
 
@@ -222,7 +222,7 @@ function OnboardingPage() {
           {repairs.map((r, i) => (
             <div key={i} className="kpi-card space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-widest font-display text-muted-foreground">
+                <span className="text-xs font-semibold text-muted-foreground">
                   Repair {i + 1}
                 </span>
                 <Button variant="ghost" size="icon" onClick={() => setRepairs(repairs.filter((_, j) => j !== i))}>
@@ -300,7 +300,7 @@ function OnboardingPage() {
           {recurring.map((c, i) => (
             <div key={i} className="kpi-card space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs uppercase tracking-widest font-display text-muted-foreground">
+                <span className="text-xs font-semibold text-muted-foreground">
                   Cost {i + 1}
                 </span>
                 <Button variant="ghost" size="icon" onClick={() => setRecurring(recurring.filter((_, j) => j !== i))}>

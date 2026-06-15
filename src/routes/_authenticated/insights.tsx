@@ -40,7 +40,7 @@ import { Plus } from "lucide-react";
 import { t } from "@/lib/strings";
 
 export const Route = createFileRoute("/_authenticated/insights")({
-  head: () => ({ meta: [{ title: "Insights — RunningCost" }] }),
+  head: () => ({ meta: [{ title: "Insights — RevTab" }] }),
   component: InsightsPage,
 });
 
@@ -128,7 +128,7 @@ function InsightsPage() {
   if (vehicles.length === 0) {
     return (
       <div className="text-center py-16">
-        <h1 className="font-display text-2xl mb-2">Insights</h1>
+        <h1 className="text-2xl font-semibold mb-2">Insights</h1>
         <p className="text-muted-foreground mb-6">{t.empty.noVehicles}</p>
         <Button onClick={() => navigate({ to: "/onboarding" })}>
           <Plus className="size-4 mr-1" /> Add vehicle
@@ -143,7 +143,7 @@ function InsightsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="font-display text-2xl">Insights</h1>
+        <h1 className="text-2xl font-semibold">Insights</h1>
       </div>
 
       {vehicles.length > 1 && (
@@ -307,7 +307,7 @@ function InsightsPage() {
 
           <div className="space-y-3">
             <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+              <div className="text-xs text-muted-foreground mb-1">
                 Actual
               </div>
               <ul className="text-sm divide-y divide-border rounded-md border border-border">
@@ -327,7 +327,7 @@ function InsightsPage() {
             </div>
 
             <div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+              <div className="text-xs text-muted-foreground mb-1">
                 Estimated
               </div>
               <ul className="text-sm rounded-md border border-dashed border-border bg-muted/30 divide-y divide-border/70">
@@ -371,8 +371,8 @@ function InsightsPage() {
             </div>
 
             <div className="flex justify-between items-baseline pt-2 border-t border-border">
-              <span className="font-display text-base">Lifetime total</span>
-              <span className="tabular-nums font-display text-lg">
+              <span className="text-base font-semibold">Lifetime total</span>
+              <span className="tabular-nums text-lg font-semibold">
                 {formatMoney(lifetime.total_minor, moneySettings)}
               </span>
             </div>

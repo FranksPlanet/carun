@@ -4,19 +4,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* RunningCost — instrument cluster theme.
- * Dark dashboard-at-dusk look, amber primary (dash illumination),
- * teal for fuel/consumption, violet for admin, warning red.
- * All colors are semantic tokens in oklch; components never hardcode hex.
+/* RevTab — warm, friendly, light design system.
+ * Cream paper background, white cards, terracotta accent, soft rounded.
  */
 
 @theme inline {
-  --font-display: "Oswald", system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", "DM Sans", system-ui, sans-serif;
   --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  --font-mono: "Inter", system-ui, sans-serif;
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
@@ -55,69 +53,71 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-cat-fuel: #EF9F27;
+  --color-cat-service: #1D9E75;
+  --color-cat-admin: #888780;
+  --color-cat-other: #7F77DD;
+  --color-sand: #F5E7D6;
 }
 
 :root {
-  --radius: 0.5rem;
-  /* Dark theme — there is no light theme in this app, the instrument
-   * cluster look IS the theme. */
-  --background: oklch(0.18 0.014 230);     /* #0E1419 */
-  --foreground: oklch(0.93 0.012 220);     /* #E6EDF2 */
-  --card: oklch(0.24 0.018 230);           /* #18222B */
-  --card-foreground: oklch(0.93 0.012 220);
-  --popover: oklch(0.24 0.018 230);
-  --popover-foreground: oklch(0.93 0.012 220);
-  --primary: oklch(0.76 0.155 70);         /* amber #F2A33C */
-  --primary-foreground: oklch(0.18 0.014 230);
-  --secondary: oklch(0.30 0.025 220);
-  --secondary-foreground: oklch(0.93 0.012 220);
-  --muted: oklch(0.27 0.020 225);
-  --muted-foreground: oklch(0.66 0.022 225); /* #8499A8 */
-  --accent: oklch(0.66 0.165 295);         /* violet #9D8DF1 */
-  --accent-foreground: oklch(0.98 0.005 230);
-  --destructive: oklch(0.64 0.198 30);     /* #E5654B */
-  --destructive-foreground: oklch(0.98 0.005 230);
-  --warning: oklch(0.64 0.198 30);
-  --border: oklch(0.34 0.022 225);         /* #2C3B47 */
-  --input: oklch(0.28 0.020 225);
-  --ring: oklch(0.76 0.155 70);
-  --chart-1: oklch(0.76 0.155 70);   /* amber */
-  --chart-2: oklch(0.79 0.140 185);  /* teal #4FD1C5 */
-  --chart-3: oklch(0.66 0.165 295);  /* violet */
-  --chart-4: oklch(0.64 0.198 30);   /* red */
-  --chart-5: oklch(0.66 0.022 225);  /* slate */
-  --sidebar: oklch(0.22 0.016 230);
-  --sidebar-foreground: oklch(0.93 0.012 220);
-  --sidebar-primary: oklch(0.76 0.155 70);
-  --sidebar-primary-foreground: oklch(0.18 0.014 230);
-  --sidebar-accent: oklch(0.27 0.020 225);
-  --sidebar-accent-foreground: oklch(0.93 0.012 220);
-  --sidebar-border: oklch(0.34 0.022 225);
-  --sidebar-ring: oklch(0.76 0.155 70);
+  --radius: 1rem; /* 16px cards */
+  /* Warm light theme */
+  --background: oklch(0.974 0.012 78);     /* #FBF6EF cream */
+  --foreground: oklch(0.26 0.005 80);      /* #2C2C2A */
+  --card: oklch(1 0 0);                    /* white */
+  --card-foreground: oklch(0.26 0.005 80);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.26 0.005 80);
+  --primary: oklch(0.62 0.155 36);         /* terracotta #D85A30 */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.93 0.04 72);        /* warm sand #F5E7D6 */
+  --secondary-foreground: oklch(0.32 0.07 38); /* darker terracotta */
+  --muted: oklch(0.95 0.015 75);
+  --muted-foreground: oklch(0.45 0.008 80); /* #5F5E5A */
+  --accent: oklch(0.93 0.04 72);
+  --accent-foreground: oklch(0.32 0.07 38);
+  --destructive: oklch(0.58 0.18 30);
+  --destructive-foreground: oklch(1 0 0);
+  --warning: oklch(0.76 0.14 70);
+  --border: oklch(0.91 0.018 75);          /* soft warm border */
+  --input: oklch(0.93 0.02 75);
+  --ring: oklch(0.62 0.155 36);
+  --chart-1: #EF9F27;  /* fuel */
+  --chart-2: #1D9E75;  /* service */
+  --chart-3: #888780;  /* admin */
+  --chart-4: #7F77DD;  /* other */
+  --chart-5: #D85A30;  /* primary */
+  --sidebar: oklch(0.98 0.012 78);
+  --sidebar-foreground: oklch(0.26 0.005 80);
+  --sidebar-primary: oklch(0.62 0.155 36);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.93 0.04 72);
+  --sidebar-accent-foreground: oklch(0.32 0.07 38);
+  --sidebar-border: oklch(0.91 0.018 75);
+  --sidebar-ring: oklch(0.62 0.155 36);
 }
 
-/* Always dark — no .dark override needed, but keep parity. */
-.dark { color-scheme: dark; }
+.dark { color-scheme: light; }
 
 @layer base {
   * { border-color: var(--color-border); }
-  html, body { background-color: var(--color-background); color: var(--color-foreground); }
+  html, body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
   body {
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
-    color-scheme: dark;
+    color-scheme: light;
   }
-  h1, h2, h3, h4, .display { font-family: var(--font-display); letter-spacing: 0.01em; }
-  .label-cap {
+  h1, h2, h3, h4, .display {
     font-family: var(--font-display);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.72rem;
-    color: var(--color-muted-foreground);
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
-  .num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+  .num { font-variant-numeric: tabular-nums; }
 }
 
 @layer components {
@@ -126,77 +126,77 @@
     background-color: var(--color-card);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    padding: 1rem 1.1rem;
-    overflow: hidden;
+    padding: 1.1rem 1.25rem;
+    box-shadow: 0 1px 2px color-mix(in oklab, var(--color-foreground) 4%, transparent);
   }
   .kpi-hero {
-    border-left: 3px solid var(--color-primary);
-    box-shadow: inset 0 0 30px -10px color-mix(in oklab, var(--color-primary) 25%, transparent);
+    background: linear-gradient(135deg,
+      color-mix(in oklab, var(--color-primary) 10%, var(--color-card)),
+      var(--color-card));
+    border-color: color-mix(in oklab, var(--color-primary) 25%, var(--color-border));
+  }
+  .kpi-tile-sand {
+    background-color: var(--color-sand);
+    border-color: color-mix(in oklab, var(--color-sand) 80%, var(--color-foreground) 8%);
   }
   .kpi-label {
     font-family: var(--font-display);
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     color: var(--color-muted-foreground);
     font-weight: 500;
   }
   .kpi-value {
-    font-family: var(--font-mono);
+    font-family: var(--font-display);
     font-variant-numeric: tabular-nums;
-    font-size: 1.65rem;
-    font-weight: 500;
+    font-size: 1.75rem;
+    font-weight: 600;
     color: var(--color-foreground);
-    line-height: 1.1;
-    margin-top: 0.25rem;
+    line-height: 1.15;
+    margin-top: 0.35rem;
   }
   .kpi-unit {
-    font-family: var(--font-mono);
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     color: var(--color-muted-foreground);
     margin-left: 0.2rem;
+    font-weight: 400;
   }
   .est {
-    border: 1px dashed color-mix(in oklab, var(--color-muted-foreground) 70%, transparent) !important;
+    border: 1px dashed color-mix(in oklab, var(--color-muted-foreground) 50%, transparent) !important;
     background-image:
       repeating-linear-gradient(
         135deg,
         transparent 0,
         transparent 6px,
-        color-mix(in oklab, var(--color-muted-foreground) 8%, transparent) 6px,
-        color-mix(in oklab, var(--color-muted-foreground) 8%, transparent) 7px
+        color-mix(in oklab, var(--color-muted-foreground) 6%, transparent) 6px,
+        color-mix(in oklab, var(--color-muted-foreground) 6%, transparent) 7px
       );
   }
   .est-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    font-family: var(--font-display);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    font-size: 0.62rem;
-    padding: 0.1rem 0.4rem;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.45rem;
     border: 1px dashed var(--color-muted-foreground);
     color: var(--color-muted-foreground);
-    border-radius: 4px;
+    border-radius: 999px;
   }
   .tag-chip {
-    font-family: var(--font-display);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.7rem;
-    padding: 0.25rem 0.55rem;
+    font-size: 0.8rem;
+    padding: 0.35rem 0.75rem;
     border-radius: 999px;
     border: 1px solid var(--color-border);
-    background: var(--color-secondary);
+    background: var(--color-card);
     color: var(--color-foreground);
     cursor: pointer;
     user-select: none;
+    transition: all 0.15s ease;
   }
+  .tag-chip:hover { background: var(--color-secondary); }
   .tag-chip[data-on="true"] {
-    background: color-mix(in oklab, var(--color-primary) 18%, var(--color-card));
+    background: var(--color-primary);
     border-color: var(--color-primary);
-    color: var(--color-primary);
+    color: var(--color-primary-foreground);
   }
 }
 
