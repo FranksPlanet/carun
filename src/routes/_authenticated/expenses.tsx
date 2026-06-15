@@ -267,7 +267,7 @@ function ExpensesPage() {
   if (vehicles.length === 0) {
     return (
       <div className="text-center py-16">
-        <h1 className="font-display text-2xl mb-2">{t.nav.expenses}</h1>
+        <h1 className="text-2xl font-semibold mb-2">{t.nav.expenses}</h1>
         <p className="text-muted-foreground mb-6">{t.empty.noVehicles}</p>
         <Button onClick={() => navigate({ to: "/onboarding" })}>
           <Plus className="size-4 mr-1" /> Add vehicle
@@ -397,7 +397,7 @@ function ExpensesPage() {
           )}
         </div>
         <div className="kpi-card">
-          <div className="kpi-label mb-2">Spend over time</div>
+          <div className="text-sm font-semibold mb-2">Spend over time</div>
           <div className="h-48">
             {stats.cum.length === 0 ? (
               <div className="h-full grid place-items-center text-muted-foreground text-sm">
@@ -445,9 +445,17 @@ function ExpensesPage() {
               const cons = e.category === "fuel" ? consPointsByOdo.get(e.odometer_km) ?? null : null;
               return (
                 <li key={e.id} className="py-3 flex items-center gap-3">
+                  <div
+                    className="size-9 shrink-0 rounded-full grid place-items-center"
+                    style={{
+                      backgroundColor: `color-mix(in oklab, ${CATEGORY_META[e.category].color} 18%, var(--color-card))`,
+                    }}
+                  >
+                    <CategoryIcon category={e.category} className="size-4" />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="font-display text-sm">{catLabels[e.category]}</span>
+                      <span className="text-sm font-semibold">{catLabels[e.category]}</span>
                       <span className="text-xs text-muted-foreground">{e.date}</span>
                       <span className="text-xs text-muted-foreground">
                         · {formatDistance(e.odometer_km, settings)}
@@ -465,7 +473,7 @@ function ExpensesPage() {
                       </div>
                     )}
                   </div>
-                  <div className="font-display whitespace-nowrap">
+                  <div className="whitespace-nowrap font-semibold num tabular-nums">
                     {formatMoney(e.amount_minor, moneySettings)}
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => openEdit(e)} aria-label="Edit">
