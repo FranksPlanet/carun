@@ -61,6 +61,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  CartesianGrid,
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/expenses")({
