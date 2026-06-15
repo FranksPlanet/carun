@@ -48,9 +48,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Download, Camera, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { t } from "@/lib/strings";
+import { scanReceipt } from "@/lib/ocr.functions";
+import { ImportExpensesDialog } from "@/components/import-expenses-dialog";
 import {
   AreaChart,
   Area,
