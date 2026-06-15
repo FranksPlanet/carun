@@ -18,7 +18,7 @@ import { Plus } from "lucide-react";
 import { t } from "@/lib/strings";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Dashboard — RunningCost" }] }),
+  head: () => ({ meta: [{ title: "Dashboard — RevTab" }] }),
   component: Dashboard,
 });
 
@@ -59,9 +59,9 @@ function Dashboard() {
   if (vehicles.length === 0) {
     return (
       <div className="text-center py-16">
-        <h1 className="font-display text-2xl mb-2">Welcome to {t.appName}</h1>
+        <h1 className="text-2xl font-semibold mb-2">Welcome to {t.appName}</h1>
         <p className="text-muted-foreground mb-6">{t.empty.noVehicles}</p>
-        <Button onClick={() => navigate({ to: "/onboarding" })}>
+        <Button onClick={() => navigate({ to: "/onboarding" })} className="rounded-full">
           <Plus className="size-4 mr-1" /> Add vehicle
         </Button>
       </div>
@@ -88,11 +88,11 @@ function Dashboard() {
       )}
 
       {vehicle && (
-        <div className="kpi-card">
+        <div className="kpi-card kpi-hero">
           <div className="flex items-baseline justify-between flex-wrap gap-2">
             <div>
-              <div className="font-display text-xl">{vehicle.name}</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xl font-semibold">{vehicle.name}</div>
+              <div className="text-sm text-muted-foreground">
                 {vehicle.plate ? `${vehicle.plate} · ` : ""}{cap(vehicle.fuel_type)}
               </div>
             </div>
@@ -100,22 +100,22 @@ function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="kpi-card kpi-hero">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="kpi-card">
           <div className="kpi-label">{t.kpi.costPerKm}</div>
-          <div className="kpi-value">{formatCostPerKm(stats.cpk, settings)}</div>
+          <div className="kpi-value num">{formatCostPerKm(stats.cpk, settings)}</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">{t.kpi.avgConsumption}</div>
-          <div className="kpi-value">{formatConsumption(stats.avgCons, settings)}</div>
+          <div className="kpi-value num">{formatConsumption(stats.avgCons, settings)}</div>
         </div>
-        <div className="kpi-card">
+        <div className="kpi-card kpi-tile-sand">
           <div className="kpi-label">Current odometer</div>
-          <div className="kpi-value">{formatDistance(vehicle?.current_odometer_km ?? 0, settings)}</div>
+          <div className="kpi-value num">{formatDistance(vehicle?.current_odometer_km ?? 0, settings)}</div>
         </div>
-        <div className="kpi-card">
+        <div className="kpi-card kpi-tile-sand">
           <div className="kpi-label">{t.kpi.loggedTotal}</div>
-          <div className="kpi-value">{formatMoney(stats.total, { ...settings, currency: vehicle?.currency ?? settings.currency })}</div>
+          <div className="kpi-value num">{formatMoney(stats.total, { ...settings, currency: vehicle?.currency ?? settings.currency })}</div>
         </div>
       </div>
 
@@ -123,12 +123,12 @@ function Dashboard() {
         <div className="kpi-card text-center py-8">
           <p className="text-muted-foreground">{t.empty.noExpenses}</p>
           <Link to="/expenses" className="inline-block mt-3">
-            <Button><Plus className="size-4 mr-1" /> Add expense</Button>
+            <Button className="rounded-full"><Plus className="size-4 mr-1" /> Add expense</Button>
           </Link>
         </div>
       ) : (
         <div className="kpi-card">
-          <div className="kpi-label mb-1">Insights</div>
+          <div className="text-sm font-semibold mb-1">Insights</div>
           <p className="text-sm text-muted-foreground">
             Projections, lifetime cost estimates and consumption trends live in{" "}
             <Link to="/insights" className="underline text-foreground">Insights</Link>.
