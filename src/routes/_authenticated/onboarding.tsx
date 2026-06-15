@@ -46,7 +46,7 @@ type RecurringDraft = {
 };
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
-  head: () => ({ meta: [{ title: "Add vehicle — RunningCost" }] }),
+  head: () => ({ meta: [{ title: "Add vehicle — RevTab" }] }),
   component: OnboardingPage,
 });
 

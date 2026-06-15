@@ -7,7 +7,7 @@ import { Plus } from "lucide-react";
 import { t } from "@/lib/strings";
 
 export const Route = createFileRoute("/_authenticated/garage")({
-  head: () => ({ meta: [{ title: "Garage — RunningCost" }] }),
+  head: () => ({ meta: [{ title: "Garage — RevTab" }] }),
   component: GaragePage,
 });
 

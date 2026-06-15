@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { t } from "@/lib/strings";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({ meta: [{ title: "Settings — RunningCost" }] }),
+  head: () => ({ meta: [{ title: "Settings — RevTab" }] }),
   component: SettingsPage,
 });
 

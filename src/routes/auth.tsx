@@ -11,8 +11,8 @@ import { t } from "@/lib/strings";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — RunningCost" },
-      { name: "description", content: "Sign in to RunningCost to track your car's true cost per kilometer." },
+      { title: "Sign in — RevTab" },
+      { name: "description", content: "Sign in to RevTab to track your car's true cost per kilometer." },
     ],
   }),
   component: AuthPage,
