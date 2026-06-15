@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CATEGORIES, CATEGORY_META, CategoryIcon } from "@/lib/categories";
 import { listVehicles } from "@/lib/vehicles.functions";
 import {
   listExpenses,
@@ -57,10 +58,13 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/expenses")({
-  head: () => ({ meta: [{ title: "Expenses — RunningCost" }] }),
+  head: () => ({ meta: [{ title: "Expenses — RevTab" }] }),
   component: ExpensesPage,
 });
 
