@@ -71,7 +71,7 @@ function AuthLayout() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col pb-24 md:pb-0 bg-background">
+    <div className="min-h-dvh flex flex-col pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 bg-background">
       <header className="border-b border-border bg-card/80 backdrop-blur sticky top-0 z-20">
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link to="/dashboard" className="inline-flex items-center gap-2">
