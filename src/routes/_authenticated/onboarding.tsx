@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { t } from "@/lib/strings";
+import { parseLocalNumber } from "@/lib/format";
 
 const FUEL_TYPES = ["diesel", "petrol", "lpg", "hybrid", "electric"] as const;
 type FuelType = (typeof FUEL_TYPES)[number];
