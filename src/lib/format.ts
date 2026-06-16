@@ -120,11 +120,21 @@ export function currencySymbolFor(currency: string): string {
 }
 
 export function parseLocalNumber(input: string): number {
-  if (!input) return NaN;
+  if (input == null) return NaN;
+  const s = String(input).trim();
+  if (!s) return NaN;
   // Accept "1 234,56" / "1,234.56" / "1234.56"
-  const cleaned = input
+  const cleaned = s
     .replace(/\s/g, "")
     .replace(/(\d),(\d{1,2})$/, "$1.$2")
     .replace(/,/g, "");
   return parseFloat(cleaned);
+}
+
+export function formatDate(iso: string, settings: ProfileSettings = defaultSettings): string {
+  if (!iso) return "";
+  const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
+  if (isNaN(+d)) return iso;
+  const loc = localeForCurrency[settings.currency] ?? "cs-CZ";
+  return new Intl.DateTimeFormat(loc, { day: "2-digit", month: "short", year: "numeric" }).format(d);
 }
