@@ -25,9 +25,14 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (mode === "signup" && !consent) {
+      toast.error("Please agree to the Privacy Policy to continue.");
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "signup") {
