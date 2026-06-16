@@ -35,6 +35,10 @@ export const createRepair = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => Schema.parse(d))
   .handler(async ({ data, context }) => {
+    const { data: v, error: vErr } = await context.supabase
+      .from("vehicles").select("id").eq("id", data.vehicle_id).maybeSingle();
+    if (vErr) throw new Error(vErr.message);
+    if (!v) throw new Error("Vehicle not found or not yours.");
     const rep = representativeDateFromPrecision(
       data.precision,
       data.year,
