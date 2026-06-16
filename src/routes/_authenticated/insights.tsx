@@ -392,10 +392,17 @@ function InsightsPage() {
         </div>
       )}
 
-      <div className="kpi-card opacity-75">
-        <div className="kpi-label">Projection</div>
-        <p className="text-sm text-muted-foreground mt-1">Coming soon.</p>
-      </div>
+      {vehicle && (
+        <ProjectionSection
+          vehicle={vehicle}
+          expenses={expenses}
+          recurring={recurring}
+          settings={settings}
+          moneySettings={moneySettings}
+          currency={currency}
+        />
+      )}
+
     </div>
   );
 }
