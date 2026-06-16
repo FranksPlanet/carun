@@ -334,7 +334,14 @@ function ExpensesPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (vehiclesQ.isLoading) return <ListSkeleton />;
+  if (vehiclesQ.isLoading) {
+    return (
+      <div className="space-y-3">
+        <div className="h-8 w-40 bg-muted rounded animate-pulse" />
+        <div className="h-32 kpi-card animate-pulse" />
+      </div>
+    );
+  }
 
   if (vehicles.length === 0) {
     return (
