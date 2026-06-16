@@ -196,21 +196,21 @@ function OnboardingPage() {
             </Select>
           </Field>
           <Field label="Current odometer (km)">
-            <Input type="number" min={0} value={currentOdo} onChange={(e) => setCurrentOdo(e.target.value)} />
+            <Input inputMode="decimal" value={currentOdo} onChange={(e) => setCurrentOdo(e.target.value)} />
           </Field>
         </div>
       )}
 
       {step === 2 && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Purchase date">
             <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
           </Field>
           <Field label="Odometer at purchase (km)">
-            <Input type="number" min={0} value={purchaseOdo} onChange={(e) => setPurchaseOdo(e.target.value)} />
+            <Input inputMode="decimal" value={purchaseOdo} onChange={(e) => setPurchaseOdo(e.target.value)} />
           </Field>
           <Field label="Purchase price">
-            <Input type="number" min={0} step="0.01" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} />
+            <Input inputMode="decimal" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} />
           </Field>
           <Field label="Currency">
             <Input value={currency} onChange={(e) => setCurrency(e.target.value)} />
