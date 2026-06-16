@@ -334,7 +334,7 @@ function ExpensesPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (vehiclesQ.isLoading) return <p className="text-muted-foreground">Loading…</p>;
+  if (vehiclesQ.isLoading) return <ListSkeleton />;
 
   if (vehicles.length === 0) {
     return (
