@@ -90,7 +90,23 @@ function AuthPage() {
             <Label htmlFor="password">{t.auth.password}</Label>
             <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+          {mode === "signup" && (
+            <label className="flex items-start gap-2 text-sm pt-1">
+              <Checkbox
+                checked={consent}
+                onCheckedChange={(v) => setConsent(v === true)}
+                aria-label="Agree to the Privacy Policy"
+              />
+              <span>
+                I agree to the{" "}
+                <Link to="/privacy" target="_blank" className="text-primary hover:underline">
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
+          )}
+          <Button type="submit" className="w-full" disabled={loading || (mode === "signup" && !consent)}>
             {mode === "signin" ? t.auth.signIn : t.auth.signUp}
           </Button>
         </form>
