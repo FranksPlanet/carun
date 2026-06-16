@@ -235,7 +235,7 @@ function OnboardingPage() {
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Amount">
-                  <Input type="number" min={0} step="0.01" value={r.amount}
+                  <Input inputMode="decimal" value={r.amount}
                     onChange={(e) => updateRepair(setRepairs, repairs, i, { amount: e.target.value })} />
                 </Field>
                 <Field label="Date precision">
