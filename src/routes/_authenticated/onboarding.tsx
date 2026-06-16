@@ -318,7 +318,7 @@ function OnboardingPage() {
                   </Select>
                 </Field>
                 <Field label="Amount / year">
-                  <Input type="number" min={0} step="0.01" value={c.amount}
+                  <Input inputMode="decimal" value={c.amount}
                     onChange={(e) => updateRecurring(setRecurring, recurring, i, { amount: e.target.value })} />
                 </Field>
               </div>
