@@ -31,10 +31,17 @@ export const listExpenses = createServerFn({ method: "GET" })
     return out ?? [];
   });
 
+async function assertOwnsVehicle(supabase: typeof import("@supabase/supabase-js").SupabaseClient.prototype | any, vehicleId: string) {
+  const { data, error } = await supabase.from("vehicles").select("id").eq("id", vehicleId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Vehicle not found or not yours.");
+}
+
 export const createExpense = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => CreateExpenseSchema.parse(d))
   .handler(async ({ data, context }) => {
+    await assertOwnsVehicle(context.supabase, data.vehicle_id);
     const { data: out, error } = await context.supabase
       .from("expenses")
       .insert({ ...data, user_id: context.userId })
@@ -51,6 +58,7 @@ export const updateExpense = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => UpdateExpenseSchema.parse(d))
   .handler(async ({ data, context }) => {
     const { id, ...rest } = data;
+    if (rest.vehicle_id) await assertOwnsVehicle(context.supabase, rest.vehicle_id);
     const { data: out, error } = await context.supabase
       .from("expenses")
       .update(rest)
