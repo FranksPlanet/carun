@@ -524,7 +524,7 @@ function ProjectionSection({
       <div className="space-y-5 mb-5">
         <SliderRow
           label="Annual distance"
-          value={`${annualKm.toLocaleString()} km/yr`}
+          value={formatDistance(annualKm, settings)}
         >
           <Slider
             min={3000}
@@ -532,6 +532,7 @@ function ProjectionSection({
             step={500}
             value={[annualKm]}
             onValueChange={(v) => setAnnualKm(v[0])}
+            aria-label="Annual distance"
           />
         </SliderRow>
 
