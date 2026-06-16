@@ -413,15 +413,12 @@ type ProjectionProps = {
   vehicle: any;
   expenses: ExpenseRow[];
   recurring: { amount_minor_per_year: number }[];
-  settings: ReturnType<typeof getSettings>;
-  moneySettings: ReturnType<typeof getSettings>;
+  settings: ProfileSettings;
+  moneySettings: ProfileSettings;
   currency: string;
 };
 
-// helper so the type above resolves
-function getSettings() {
-  return defaultSettings;
-}
+
 
 function ProjectionSection({
   vehicle,
