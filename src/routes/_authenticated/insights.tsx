@@ -40,7 +40,9 @@ import {
   formatPricePerLiter,
   moneyMajorToMinor,
   moneyMinorToMajor,
+  type ProfileSettings,
 } from "@/lib/format";
+
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Plus } from "lucide-react";
