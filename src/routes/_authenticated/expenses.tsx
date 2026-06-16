@@ -25,6 +25,7 @@ import {
   formatDistance,
   formatConsumption,
   formatVolume,
+  formatDate,
   moneyMajorToMinor,
   moneyMinorToMajor,
   parseLocalNumber,
