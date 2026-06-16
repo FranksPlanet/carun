@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LineChart,
   Line,
@@ -10,6 +10,7 @@ import {
   YAxis,
   Tooltip,
   ReferenceLine,
+  ReferenceDot,
   Scatter,
   ComposedChart,
 } from "recharts";
@@ -24,6 +25,10 @@ import {
   averageConsumption,
   pricePerLiterSeries,
   lifetimeBreakdown,
+  projection,
+  defaultAnnualKm,
+  defaultFuelPriceMinor,
+  defaultMaintenancePerKm,
   type ExpenseRow,
 } from "@/lib/calc";
 import {
@@ -33,9 +38,11 @@ import {
   formatDistance,
   formatMoney,
   formatPricePerLiter,
+  moneyMajorToMinor,
   moneyMinorToMajor,
 } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Plus } from "lucide-react";
 import { t } from "@/lib/strings";
 
@@ -43,6 +50,7 @@ export const Route = createFileRoute("/_authenticated/insights")({
   head: () => ({ meta: [{ title: "Insights — RevTab" }] }),
   component: InsightsPage,
 });
+
 
 function InsightsPage() {
   const navigate = useNavigate();
