@@ -688,7 +688,7 @@ function SliderRow({
 }: {
   label: string;
   value: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <div>
