@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   LineChart,
   Line,
@@ -10,6 +10,7 @@ import {
   YAxis,
   Tooltip,
   ReferenceLine,
+  ReferenceDot,
   Scatter,
   ComposedChart,
 } from "recharts";
@@ -24,6 +25,10 @@ import {
   averageConsumption,
   pricePerLiterSeries,
   lifetimeBreakdown,
+  projection,
+  defaultAnnualKm,
+  defaultFuelPriceMinor,
+  defaultMaintenancePerKm,
   type ExpenseRow,
 } from "@/lib/calc";
 import {
@@ -33,9 +38,13 @@ import {
   formatDistance,
   formatMoney,
   formatPricePerLiter,
+  moneyMajorToMinor,
   moneyMinorToMajor,
+  type ProfileSettings,
 } from "@/lib/format";
+
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Plus } from "lucide-react";
 import { t } from "@/lib/strings";
 
@@ -43,6 +52,7 @@ export const Route = createFileRoute("/_authenticated/insights")({
   head: () => ({ meta: [{ title: "Insights — RevTab" }] }),
   component: InsightsPage,
 });
+
 
 function InsightsPage() {
   const navigate = useNavigate();
@@ -384,10 +394,319 @@ function InsightsPage() {
         </div>
       )}
 
-      <div className="kpi-card opacity-75">
-        <div className="kpi-label">Projection</div>
-        <p className="text-sm text-muted-foreground mt-1">Coming soon.</p>
-      </div>
+      {vehicle && (
+        <ProjectionSection
+          vehicle={vehicle}
+          expenses={expenses}
+          recurring={recurring}
+          settings={settings}
+          moneySettings={moneySettings}
+          currency={currency}
+        />
+      )}
+
     </div>
   );
 }
+
+type ProjectionProps = {
+  vehicle: any;
+  expenses: ExpenseRow[];
+  recurring: { amount_minor_per_year: number }[];
+  settings: ProfileSettings;
+  moneySettings: ProfileSettings;
+  currency: string;
+};
+
+
+
+function ProjectionSection({
+  vehicle,
+  expenses,
+  recurring,
+  settings,
+  moneySettings,
+  currency,
+}: ProjectionProps) {
+  const defAnnualKm = useMemo(() => defaultAnnualKm(expenses), [expenses]);
+  const defFuelMinor = useMemo(() => defaultFuelPriceMinor(expenses), [expenses]);
+  const defMaintPerKm = useMemo(() => defaultMaintenancePerKm(expenses), [expenses]);
+
+  const [annualKm, setAnnualKm] = useState<number>(defAnnualKm);
+  const [fuelPriceMajor, setFuelPriceMajor] = useState<number>(
+    moneyMinorToMajor(defFuelMinor || moneyMajorToMinor(40, currency), currency),
+  );
+  const [horizon, setHorizon] = useState<number>(5);
+  const [maintMajorPerKm, setMaintMajorPerKm] = useState<number>(
+    moneyMinorToMajor(defMaintPerKm, currency),
+  );
+
+  // Re-seed defaults when vehicle/data changes meaningfully
+  useEffect(() => {
+    setAnnualKm(defAnnualKm);
+  }, [defAnnualKm, vehicle?.id]);
+  useEffect(() => {
+    setFuelPriceMajor(
+      moneyMinorToMajor(defFuelMinor || moneyMajorToMinor(40, currency), currency),
+    );
+  }, [defFuelMinor, currency, vehicle?.id]);
+  useEffect(() => {
+    setMaintMajorPerKm(moneyMinorToMajor(defMaintPerKm, currency));
+  }, [defMaintPerKm, currency, vehicle?.id]);
+
+  const fuelPriceMinor = moneyMajorToMinor(fuelPriceMajor, currency);
+  const maintMinorPerKm = moneyMajorToMinor(maintMajorPerKm, currency);
+
+  const fuelMinPct = 0.5;
+  const fuelMaxPct = 1.5;
+  const fuelSliderBaseMajor = moneyMinorToMajor(
+    defFuelMinor || moneyMajorToMinor(40, currency),
+    currency,
+  );
+
+  const result = useMemo(
+    () =>
+      projection(
+        {
+          purchase_date: vehicle.purchase_date,
+          purchase_odometer_km: vehicle.purchase_odometer_km,
+          purchase_price_minor: vehicle.purchase_price_minor,
+        },
+        expenses,
+        recurring,
+        {
+          annual_km: annualKm,
+          fuel_price_per_liter_minor: fuelPriceMinor,
+          horizon_years: horizon,
+          maintenance_minor_per_km: maintMinorPerKm,
+        },
+      ),
+    [vehicle, expenses, recurring, annualKm, fuelPriceMinor, horizon, maintMinorPerKm],
+  );
+
+  const purchaseKnown = vehicle.purchase_price_minor > 0;
+
+  const chartData = result.points.map((p) => ({
+    year: p.year,
+    total: moneyMinorToMajor(p.cumulative_minor, currency),
+    fuel: moneyMinorToMajor(p.fuel_cumulative_minor, currency),
+    purchase: purchaseKnown ? moneyMinorToMajor(p.purchase_price_minor, currency) : null,
+  }));
+
+  const crossoverPoint =
+    result.crossover_year != null
+      ? chartData.find((d) => d.year === result.crossover_year)
+      : null;
+
+  return (
+    <div className="kpi-card">
+      <div className="flex items-baseline justify-between gap-2 flex-wrap mb-3">
+        <div className="kpi-label">Projection</div>
+        <div className="text-xs text-muted-foreground">
+          {result.using_measured_consumption
+            ? `Using measured ${formatConsumption(result.avg_consumption_l_per_100km, settings)}`
+            : `Using default 7.5 l/100km (log more fuel for accuracy)`}
+        </div>
+      </div>
+
+      {/* Sliders */}
+      <div className="space-y-5 mb-5">
+        <SliderRow
+          label="Annual distance"
+          value={`${annualKm.toLocaleString()} km/yr`}
+        >
+          <Slider
+            min={3000}
+            max={50000}
+            step={500}
+            value={[annualKm]}
+            onValueChange={(v) => setAnnualKm(v[0])}
+          />
+        </SliderRow>
+
+        <SliderRow
+          label="Fuel price"
+          value={formatPricePerLiter(fuelPriceMinor, moneySettings)}
+        >
+          <Slider
+            min={Math.max(0.01, fuelSliderBaseMajor * fuelMinPct)}
+            max={Math.max(0.02, fuelSliderBaseMajor * fuelMaxPct)}
+            step={0.01}
+            value={[fuelPriceMajor]}
+            onValueChange={(v) => setFuelPriceMajor(v[0])}
+          />
+        </SliderRow>
+
+        <SliderRow label="Horizon" value={`${horizon} yr`}>
+          <Slider
+            min={1}
+            max={15}
+            step={1}
+            value={[horizon]}
+            onValueChange={(v) => setHorizon(v[0])}
+          />
+        </SliderRow>
+
+        <SliderRow
+          label="Maintenance & other"
+          value={formatCostPerKm(maintMinorPerKm, moneySettings)}
+        >
+          <Slider
+            min={0}
+            max={Math.max(0.5, moneyMinorToMajor(defMaintPerKm, currency) * 3 || 5)}
+            step={0.01}
+            value={[maintMajorPerKm]}
+            onValueChange={(v) => setMaintMajorPerKm(v[0])}
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Rough average skewed by one-off repairs — adjust to taste.
+          </p>
+        </SliderRow>
+      </div>
+
+      {/* Chart */}
+      <div className="h-64">
+        <ResponsiveContainer>
+          <ComposedChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+            <XAxis
+              dataKey="year"
+              tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+              tickFormatter={(y) => `Y${y}`}
+            />
+            <YAxis
+              tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+              tickFormatter={(v) =>
+                v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)
+              }
+            />
+            <Tooltip
+              contentStyle={{
+                background: "var(--color-card)",
+                border: "1px solid var(--color-border)",
+              }}
+              formatter={(v: any) =>
+                v == null
+                  ? "—"
+                  : formatMoney(moneyMajorToMinor(Number(v), currency), moneySettings)
+              }
+              labelFormatter={(y) => `Year ${y}`}
+            />
+            {purchaseKnown && (
+              <ReferenceLine
+                y={moneyMinorToMajor(vehicle.purchase_price_minor, currency)}
+                stroke="var(--color-muted-foreground)"
+                strokeDasharray="3 3"
+                label={{
+                  value: "purchase price",
+                  fill: "var(--color-muted-foreground)",
+                  fontSize: 10,
+                  position: "insideTopRight",
+                }}
+              />
+            )}
+            <Line
+              type="monotone"
+              dataKey="total"
+              name="Cumulative total"
+              stroke="var(--color-primary)"
+              strokeWidth={2}
+              dot={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="fuel"
+              name="Cumulative fuel"
+              stroke="var(--color-chart-2, var(--color-accent))"
+              strokeWidth={2}
+              strokeDasharray="4 3"
+              dot={false}
+            />
+            {crossoverPoint && (
+              <ReferenceDot
+                x={crossoverPoint.year}
+                y={crossoverPoint.fuel}
+                r={5}
+                fill="var(--color-destructive)"
+                stroke="var(--color-card)"
+                strokeWidth={2}
+                label={{
+                  value: `crossover Y${crossoverPoint.year}`,
+                  fill: "var(--color-foreground)",
+                  fontSize: 10,
+                  position: "top",
+                }}
+              />
+            )}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* KPI row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+        <Kpi
+          label={`Total over ${horizon} yr`}
+          value={formatMoney(result.total_horizon_minor, moneySettings)}
+        />
+        <Kpi
+          label="Avg per year"
+          value={formatMoney(result.avg_per_year_minor, moneySettings)}
+        />
+        <Kpi
+          label="Fuel cost / km"
+          value={formatCostPerKm(result.fuel_minor_per_km, moneySettings)}
+        />
+        <Kpi
+          label="Crossover"
+          value={
+            !purchaseKnown
+              ? "needs purchase price"
+              : result.crossover_year != null
+                ? `Year ${result.crossover_year}`
+                : "beyond horizon"
+          }
+        />
+      </div>
+
+      {purchaseKnown && result.crossover_year != null && (
+        <p className="text-sm mt-4 text-foreground/80">
+          Around year {result.crossover_year}, what you've spent on fuel overtakes
+          what the car cost to buy — the part of ownership most people never see.
+        </p>
+      )}
+
+      <p className="text-xs text-muted-foreground mt-3">
+        These are adjustable assumptions to stress-test, not a fixed prediction.
+      </p>
+    </div>
+  );
+}
+
+function SliderRow({
+  label,
+  value,
+  children,
+}: {
+  label: string;
+  value: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-2">
+        <span className="text-xs text-muted-foreground">{label}</span>
+        <span className="text-sm font-medium tabular-nums">{value}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Kpi({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className="text-sm font-semibold tabular-nums mt-0.5">{value}</div>
+    </div>
+  );
+}
+

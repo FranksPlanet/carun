@@ -316,24 +316,55 @@ export type ProjectionInput = {
   annual_km: number;
   fuel_price_per_liter_minor: number; // price in currency minor units per liter
   horizon_years: number;
+  maintenance_minor_per_km: number; // user-adjustable rate for service + other
 };
 
 export type ProjectionPoint = {
   year: number;
   cumulative_minor: number;
   fuel_cumulative_minor: number;
+  purchase_price_minor: number;
 };
 
 export type ProjectionResult = {
   points: ProjectionPoint[];
   fuel_minor_per_km: number;
-  nonfuel_minor_per_km: number;
-  yearly_running_minor: number;
+  maintenance_minor_per_km: number;
+  yearly_fuel_minor: number;
+  yearly_recurring_minor: number;
+  yearly_maintenance_minor: number;
+  yearly_total_minor: number;
   total_horizon_minor: number;
+  avg_per_year_minor: number;
   crossover_year: number | null;
   using_measured_consumption: boolean;
   avg_consumption_l_per_100km: number;
 };
+
+export function defaultMaintenancePerKm(expenses: ExpenseRow[]): number {
+  const km = trackedKm(expenses);
+  if (km <= 0) return 0;
+  const by = totalsByCategory(expenses);
+  return ((by.service ?? 0) + (by.other ?? 0)) / km;
+}
+
+export function defaultAnnualKm(expenses: ExpenseRow[]): number {
+  const km = trackedKm(expenses);
+  if (km <= 0) return 15000;
+  const sorted = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
+  const first = new Date(sorted[0].date).getTime();
+  const last = new Date(sorted[sorted.length - 1].date).getTime();
+  const years = Math.max(0.25, (last - first) / (1000 * 60 * 60 * 24 * 365.25));
+  return Math.round(km / years);
+}
+
+export function defaultFuelPriceMinor(expenses: ExpenseRow[]): number {
+  const fuels = expenses
+    .filter((e) => e.category === "fuel" && e.liters && e.liters > 0)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  if (fuels.length === 0) return 0;
+  return Math.round(fuels[0].amount_minor / (fuels[0].liters as number));
+}
 
 export function projection(
   vehicle: VehicleRow,
@@ -346,38 +377,55 @@ export function projection(
   const consumption = measured ?? 7.5;
   const fuelPerKm = (consumption / 100) * input.fuel_price_per_liter_minor;
 
-  // Non-fuel per km from tracked data (service + admin + other).
-  const km = trackedKm(expenses);
-  const by = totalsByCategory(expenses);
-  const nonFuel = by.service + by.admin + by.other;
-  const nonFuelPerKm = km > 0 ? nonFuel / km : 0;
-
   const yearlyRecurring = recurring.reduce((s, r) => s + r.amount_minor_per_year, 0);
-  const yearlyRunning = Math.round(
-    (fuelPerKm + nonFuelPerKm) * input.annual_km + yearlyRecurring,
-  );
+  const yearlyFuel = Math.round(fuelPerKm * input.annual_km);
+  const yearlyMaintenance = Math.round(input.maintenance_minor_per_km * input.annual_km);
+  const yearlyTotal = yearlyFuel + yearlyRecurring + yearlyMaintenance;
 
-  const pts: ProjectionPoint[] = [];
+  const pts: ProjectionPoint[] = [
+    {
+      year: 0,
+      cumulative_minor: vehicle.purchase_price_minor,
+      fuel_cumulative_minor: 0,
+      purchase_price_minor: vehicle.purchase_price_minor,
+    },
+  ];
   let cum = vehicle.purchase_price_minor;
   let fuelCum = 0;
   let crossover: number | null = null;
   for (let y = 1; y <= input.horizon_years; y++) {
-    cum += yearlyRunning;
-    fuelCum += Math.round(fuelPerKm * input.annual_km);
-    pts.push({ year: y, cumulative_minor: cum, fuel_cumulative_minor: fuelCum });
-    if (crossover == null && fuelCum >= vehicle.purchase_price_minor) crossover = y;
+    cum += yearlyTotal;
+    fuelCum += yearlyFuel;
+    pts.push({
+      year: y,
+      cumulative_minor: cum,
+      fuel_cumulative_minor: fuelCum,
+      purchase_price_minor: vehicle.purchase_price_minor,
+    });
+    if (
+      crossover == null &&
+      vehicle.purchase_price_minor > 0 &&
+      fuelCum >= vehicle.purchase_price_minor
+    ) {
+      crossover = y;
+    }
   }
   return {
     points: pts,
     fuel_minor_per_km: fuelPerKm,
-    nonfuel_minor_per_km: nonFuelPerKm,
-    yearly_running_minor: yearlyRunning,
+    maintenance_minor_per_km: input.maintenance_minor_per_km,
+    yearly_fuel_minor: yearlyFuel,
+    yearly_recurring_minor: yearlyRecurring,
+    yearly_maintenance_minor: yearlyMaintenance,
+    yearly_total_minor: yearlyTotal,
     total_horizon_minor: cum,
+    avg_per_year_minor: input.horizon_years > 0 ? Math.round((cum - vehicle.purchase_price_minor) / input.horizon_years) : 0,
     crossover_year: crossover,
     using_measured_consumption: measured != null,
     avg_consumption_l_per_100km: consumption,
   };
 }
+
 
 // Fuzzy date helpers
 export function representativeDateFromPrecision(
