@@ -406,10 +406,12 @@ function updateRecurring(
 }
 
 function toInt(s: string): number {
-  return Math.max(0, parseInt(s || "0", 10) || 0);
+  const n = parseLocalNumber(s);
+  return isFinite(n) ? Math.max(0, Math.round(n)) : 0;
 }
 function toMinor(s: string): number {
-  return Math.max(0, Math.round((parseFloat(s || "0") || 0) * 100));
+  const n = parseLocalNumber(s);
+  return isFinite(n) ? Math.max(0, Math.round(n * 100)) : 0;
 }
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
