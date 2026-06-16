@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { t } from "@/lib/strings";
+import { parseLocalNumber } from "@/lib/format";
 
 const FUEL_TYPES = ["diesel", "petrol", "lpg", "hybrid", "electric"] as const;
 type FuelType = (typeof FUEL_TYPES)[number];
@@ -195,21 +196,21 @@ function OnboardingPage() {
             </Select>
           </Field>
           <Field label="Current odometer (km)">
-            <Input type="number" min={0} value={currentOdo} onChange={(e) => setCurrentOdo(e.target.value)} />
+            <Input inputMode="decimal" value={currentOdo} onChange={(e) => setCurrentOdo(e.target.value)} />
           </Field>
         </div>
       )}
 
       {step === 2 && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Purchase date">
             <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
           </Field>
           <Field label="Odometer at purchase (km)">
-            <Input type="number" min={0} value={purchaseOdo} onChange={(e) => setPurchaseOdo(e.target.value)} />
+            <Input inputMode="decimal" value={purchaseOdo} onChange={(e) => setPurchaseOdo(e.target.value)} />
           </Field>
           <Field label="Purchase price">
-            <Input type="number" min={0} step="0.01" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} />
+            <Input inputMode="decimal" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} />
           </Field>
           <Field label="Currency">
             <Input value={currency} onChange={(e) => setCurrency(e.target.value)} />
@@ -234,7 +235,7 @@ function OnboardingPage() {
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Amount">
-                  <Input type="number" min={0} step="0.01" value={r.amount}
+                  <Input inputMode="decimal" value={r.amount}
                     onChange={(e) => updateRepair(setRepairs, repairs, i, { amount: e.target.value })} />
                 </Field>
                 <Field label="Date precision">
@@ -317,7 +318,7 @@ function OnboardingPage() {
                   </Select>
                 </Field>
                 <Field label="Amount / year">
-                  <Input type="number" min={0} step="0.01" value={c.amount}
+                  <Input inputMode="decimal" value={c.amount}
                     onChange={(e) => updateRecurring(setRecurring, recurring, i, { amount: e.target.value })} />
                 </Field>
               </div>
@@ -405,10 +406,12 @@ function updateRecurring(
 }
 
 function toInt(s: string): number {
-  return Math.max(0, parseInt(s || "0", 10) || 0);
+  const n = parseLocalNumber(s);
+  return isFinite(n) ? Math.max(0, Math.round(n)) : 0;
 }
 function toMinor(s: string): number {
-  return Math.max(0, Math.round((parseFloat(s || "0") || 0) * 100));
+  const n = parseLocalNumber(s);
+  return isFinite(n) ? Math.max(0, Math.round(n * 100)) : 0;
 }
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);

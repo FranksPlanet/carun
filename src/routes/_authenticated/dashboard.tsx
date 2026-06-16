@@ -54,7 +54,16 @@ function Dashboard() {
   }, [expenses]);
 
   if (vehiclesQ.isLoading || profileQ.isLoading || !vehiclesQ.isSuccess) {
-    return <p className="text-muted-foreground">Loading…</p>;
+    return (
+      <div className="space-y-4">
+        <div className="aspect-video w-full rounded-2xl bg-muted animate-pulse" />
+        <div className="grid grid-cols-2 gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="kpi-card h-24 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (vehicles.length === 0) {

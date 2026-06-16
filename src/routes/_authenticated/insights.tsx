@@ -133,7 +133,18 @@ function InsightsPage() {
     [expenses, currency],
   );
 
-  if (vehiclesQ.isLoading) return <p className="text-muted-foreground">Loading…</p>;
+  if (vehiclesQ.isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-32 bg-muted rounded animate-pulse" />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="kpi-card h-24 animate-pulse" />
+          <div className="kpi-card h-24 animate-pulse" />
+        </div>
+        <div className="kpi-card h-64 animate-pulse" />
+      </div>
+    );
+  }
 
   if (vehicles.length === 0) {
     return (
@@ -513,7 +524,7 @@ function ProjectionSection({
       <div className="space-y-5 mb-5">
         <SliderRow
           label="Annual distance"
-          value={`${annualKm.toLocaleString()} km/yr`}
+          value={formatDistance(annualKm, settings)}
         >
           <Slider
             min={3000}
@@ -521,6 +532,7 @@ function ProjectionSection({
             step={500}
             value={[annualKm]}
             onValueChange={(v) => setAnnualKm(v[0])}
+            aria-label="Annual distance"
           />
         </SliderRow>
 

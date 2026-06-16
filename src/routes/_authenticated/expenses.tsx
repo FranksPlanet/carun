@@ -25,6 +25,7 @@ import {
   formatDistance,
   formatConsumption,
   formatVolume,
+  formatDate,
   moneyMajorToMinor,
   moneyMinorToMajor,
   parseLocalNumber,
@@ -333,7 +334,14 @@ function ExpensesPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (vehiclesQ.isLoading) return <p className="text-muted-foreground">Loading…</p>;
+  if (vehiclesQ.isLoading) {
+    return (
+      <div className="space-y-3">
+        <div className="h-8 w-40 bg-muted rounded animate-pulse" />
+        <div className="h-32 kpi-card animate-pulse" />
+      </div>
+    );
+  }
 
   if (vehicles.length === 0) {
     return (
@@ -401,7 +409,7 @@ function ExpensesPage() {
           <Button variant="outline" className="rounded-full" onClick={exportCsv} disabled={expenses.length === 0}>
             <Download className="size-4 mr-1" /> Export CSV
           </Button>
-          <Button onClick={openAdd} className="rounded-full">
+          <Button onClick={openAdd} className="rounded-full hidden md:inline-flex">
             <Plus className="size-4 mr-1" /> Add expense
           </Button>
         </div>
@@ -597,11 +605,22 @@ function ExpensesPage() {
       {/* List */}
       <div className="kpi-card">
         {expensesQ.isLoading ? (
-          <p className="text-muted-foreground">Loading…</p>
+          <ul className="divide-y divide-border">
+            {[0, 1, 2].map((i) => (
+              <li key={i} className="py-3 flex items-center gap-3">
+                <div className="size-9 rounded-full bg-muted animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-1/2 bg-muted rounded animate-pulse" />
+                  <div className="h-3 w-1/3 bg-muted rounded animate-pulse" />
+                </div>
+                <div className="h-4 w-16 bg-muted rounded animate-pulse" />
+              </li>
+            ))}
+          </ul>
         ) : expenses.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">{t.empty.noExpenses}</p>
-            <Button onClick={openAdd}>
+            <Button onClick={openAdd} className="rounded-full">
               <Plus className="size-4 mr-1" /> Add expense
             </Button>
           </div>
@@ -610,7 +629,7 @@ function ExpensesPage() {
             {expenses.map((e) => {
               const cons = e.category === "fuel" ? consPointsByOdo.get(e.odometer_km) ?? null : null;
               return (
-                <li key={e.id} className="py-3 flex items-center gap-3">
+                <li key={e.id} className="py-3 grid grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-x-3 gap-y-1">
                   <div
                     className="size-9 shrink-0 rounded-full grid place-items-center"
                     style={{
@@ -619,42 +638,44 @@ function ExpensesPage() {
                   >
                     <CategoryIcon category={e.category} className="size-4" />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="text-sm font-semibold">{catLabels[e.category]}</span>
-                      <span className="text-xs text-muted-foreground">{e.date}</span>
+                      <span className="text-xs text-muted-foreground">{formatDate(e.date, settings)}</span>
                       <span className="text-xs text-muted-foreground">
                         · {formatDistance(e.odometer_km, settings)}
                       </span>
-                      {e.category === "fuel" && e.liters != null && (
-                        <span className="text-xs text-muted-foreground">
-                          · {formatVolume(e.liters, settings)}
-                          {cons != null ? ` · ${formatConsumption(cons, settings)}` : ""}
-                        </span>
-                      )}
                     </div>
+                    {e.category === "fuel" && e.liters != null && (
+                      <div className="text-xs text-muted-foreground">
+                        {formatVolume(e.liters, settings)}
+                        {cons != null ? ` · ${formatConsumption(cons, settings)}` : ""}
+                      </div>
+                    )}
                     {e.tags && e.tags.length > 0 && (
-                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                      <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
                         {e.tags.join(" · ")}
                       </div>
                     )}
                   </div>
-                  <div className="whitespace-nowrap font-semibold num tabular-nums">
+                  <div className="whitespace-nowrap font-semibold num tabular-nums text-right col-start-3 sm:col-start-auto">
                     {formatMoney(e.amount_minor, moneySettings)}
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => openEdit(e)} aria-label="Edit">
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      if (confirm("Delete this expense?")) deleteMut.mutate(e.id);
-                    }}
-                    aria-label="Delete"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
+                  <div className="col-span-3 sm:col-span-1 flex justify-end gap-1 sm:contents">
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(e)} aria-label="Edit expense">
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        if (confirm("Delete this expense?")) deleteMut.mutate(e.id);
+                      }}
+                      aria-label="Delete expense"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
                 </li>
               );
             })}
@@ -780,23 +801,29 @@ function ExpensesPage() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => saveMut.mutate(form)}
-              disabled={
-                saveMut.isPending ||
-                !form.date ||
-                !form.odometer ||
-                !form.amount ||
-                (form.category === "fuel" && !form.liters)
-              }
-            >
-              {saveMut.isPending ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
+          {(() => {
+            const amt = parseLocalNumber(form.amount);
+            const odo = parseLocalNumber(form.odometer);
+            const lt = parseLocalNumber(form.liters);
+            const invalid =
+              !form.date ||
+              !(isFinite(odo) && odo >= 0) ||
+              !(isFinite(amt) && amt > 0) ||
+              (form.category === "fuel" && !(isFinite(lt) && lt > 0));
+            return (
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => saveMut.mutate(form)}
+                  disabled={saveMut.isPending || invalid}
+                >
+                  {saveMut.isPending ? "Saving…" : "Save"}
+                </Button>
+              </DialogFooter>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
