@@ -31,7 +31,7 @@ export const listExpenses = createServerFn({ method: "GET" })
     return out ?? [];
   });
 
-async function assertOwnsVehicle(supabase: typeof import("@supabase/supabase-js").SupabaseClient.prototype | any, vehicleId: string) {
+async function assertOwnsVehicle(supabase: any, vehicleId: string) {
   const { data, error } = await supabase.from("vehicles").select("id").eq("id", vehicleId).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Vehicle not found or not yours.");
