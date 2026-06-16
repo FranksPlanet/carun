@@ -22,7 +22,7 @@ function IndexPage() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen grid place-items-center bg-background">
+    <div className="min-h-dvh grid place-items-center bg-background">
       <p className="text-sm text-muted-foreground">Loading…</p>
     </div>
   );
