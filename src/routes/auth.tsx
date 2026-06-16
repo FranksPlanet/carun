@@ -1,10 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { t } from "@/lib/strings";
 
@@ -24,9 +25,14 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [consent, setConsent] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (mode === "signup" && !consent) {
+      toast.error("Please agree to the Privacy Policy to continue.");
+      return;
+    }
     setLoading(true);
     try {
       if (mode === "signup") {
@@ -84,7 +90,23 @@ function AuthPage() {
             <Label htmlFor="password">{t.auth.password}</Label>
             <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+          {mode === "signup" && (
+            <label className="flex items-start gap-2 text-sm pt-1">
+              <Checkbox
+                checked={consent}
+                onCheckedChange={(v) => setConsent(v === true)}
+                aria-label="Agree to the Privacy Policy"
+              />
+              <span>
+                I agree to the{" "}
+                <Link to="/privacy" target="_blank" className="text-primary hover:underline">
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
+          )}
+          <Button type="submit" className="w-full" disabled={loading || (mode === "signup" && !consent)}>
             {mode === "signin" ? t.auth.signIn : t.auth.signUp}
           </Button>
         </form>

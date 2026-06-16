@@ -26,10 +26,27 @@ Extract only these fields and output STRICT JSON with no commentary:
 - Comma is the decimal separator on Czech receipts; convert to dot.
 - If a field is missing or unreadable, use null. Do not guess.`;
 
+// Simple in-memory per-user rate limit. Stateless workers may reset this on
+// cold starts, but it bounds bursty abuse within a single instance — enough
+// for a friendly cap on a costly AI call.
+const SCAN_LIMIT_PER_HOUR = 20;
+const scanLog = new Map<string, number[]>();
+
 export const scanReceipt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => Schema.parse(d))
-  .handler(async ({ data }): Promise<OcrResult> => {
+  .handler(async ({ data, context }): Promise<OcrResult> => {
+    const now = Date.now();
+    const windowStart = now - 60 * 60 * 1000;
+    const prior = (scanLog.get(context.userId) ?? []).filter((t) => t > windowStart);
+    if (prior.length >= SCAN_LIMIT_PER_HOUR) {
+      throw new Error(
+        `You've scanned ${SCAN_LIMIT_PER_HOUR} receipts in the last hour. Please try again later.`,
+      );
+    }
+    prior.push(now);
+    scanLog.set(context.userId, prior);
+
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured.");
     const { createLovableAiGatewayProvider } = await import("@/lib/ai-gateway.server");
