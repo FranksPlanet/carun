@@ -801,23 +801,29 @@ function ExpensesPage() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => saveMut.mutate(form)}
-              disabled={
-                saveMut.isPending ||
-                !form.date ||
-                !form.odometer ||
-                !form.amount ||
-                (form.category === "fuel" && !form.liters)
-              }
-            >
-              {saveMut.isPending ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
+          {(() => {
+            const amt = parseLocalNumber(form.amount);
+            const odo = parseLocalNumber(form.odometer);
+            const lt = parseLocalNumber(form.liters);
+            const invalid =
+              !form.date ||
+              !(isFinite(odo) && odo >= 0) ||
+              !(isFinite(amt) && amt > 0) ||
+              (form.category === "fuel" && !(isFinite(lt) && lt > 0));
+            return (
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => saveMut.mutate(form)}
+                  disabled={saveMut.isPending || invalid}
+                >
+                  {saveMut.isPending ? "Saving…" : "Save"}
+                </Button>
+              </DialogFooter>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
