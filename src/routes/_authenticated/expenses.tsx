@@ -402,7 +402,7 @@ function ExpensesPage() {
           <Button variant="outline" className="rounded-full" onClick={exportCsv} disabled={expenses.length === 0}>
             <Download className="size-4 mr-1" /> Export CSV
           </Button>
-          <Button onClick={openAdd} className="rounded-full">
+          <Button onClick={openAdd} className="rounded-full hidden md:inline-flex">
             <Plus className="size-4 mr-1" /> Add expense
           </Button>
         </div>
