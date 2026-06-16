@@ -86,6 +86,8 @@ export const bulkCreateExpenses = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => BulkSchema.parse(d))
   .handler(async ({ data, context }) => {
+    const uniqueVehicles = [...new Set(data.rows.map((r) => r.vehicle_id))];
+    for (const vid of uniqueVehicles) await assertOwnsVehicle(context.supabase, vid);
     const payload = data.rows.map((r) => ({ ...r, user_id: context.userId }));
     const { data: out, error } = await context.supabase
       .from("expenses")
