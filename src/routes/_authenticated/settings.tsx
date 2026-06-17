@@ -70,6 +70,13 @@ function SettingsPage() {
 
       <section className="kpi-card space-y-3">
         <h2 className="font-semibold flex items-center gap-2">
+          <Tag className="size-4" aria-hidden /> Categories
+        </h2>
+        <CategoriesManager />
+      </section>
+
+      <section className="kpi-card space-y-3">
+        <h2 className="font-semibold flex items-center gap-2">
           <Download className="size-4" aria-hidden /> Export all my data
         </h2>
         <p className="text-sm text-muted-foreground">
