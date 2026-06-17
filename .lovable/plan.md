@@ -1,123 +1,101 @@
-# Plan: User-editable expense categories
+# Depreciation-aware cost-per-km
 
-## 1. Current data (confirmed)
+## 1. Formulas (all derived from existing `lifetimeBreakdown`)
 
-Existing `expenses.category` distribution (enum `expense_category`):
+Let:
+- `L = lifetime.total_minor` (existing lifetime total — unchanged)
+- `P = vehicle.purchase_price_minor`
+- `R = vehicle.estimated_resale_value_minor` (new, nullable)
+- `K = vehicle.current_odometer_km − vehicle.purchase_odometer_km` (lifetime km — the car's full life, not tracked km)
 
-| Old value | Count |
-|---|---|
-| fuel | 20 |
-| service | 4 |
-| admin | 2 |
-| other | 0 |
-
-## 2. Migration mapping (no data loss)
-
-| Old enum | → New category | Role |
-|---|---|---|
-| `fuel` | **Nafta** | fuel |
-| `service` | **Servis** | repair |
-| `admin` | **Admin** | admin |
-| `other` | **Provoz** (safe default) | routine |
-
-Every expense ends up with a valid `category_id`. The old enum column is kept (renamed to `legacy_category`) until a later batch, so we can rollback without losing the original label.
-
-## 3. Data model
-
-New table `public.categories`:
-
-- `id uuid pk`, `user_id uuid not null`
-- `name text not null`, `color text not null`, `icon text not null`
-- `role category_role not null` — enum `('fuel','routine','repair','admin','other')`
-- `sort_order int not null default 0`, `description text`
-- `created_at`, `updated_at`
-- `unique (user_id, name)`
-- RLS: `FOR ALL USING (auth.uid()=user_id) WITH CHECK (auth.uid()=user_id)`, plus GRANTs to `authenticated` / `service_role`.
-
-Seeded defaults (for every existing user + new users via `handle_new_user`):
-
-| Name | Role | Icon | Color | Description |
-|---|---|---|---|---|
-| Nafta | fuel | Fuel | #EF9F27 | Diesel and other fuel fill-ups |
-| Provoz | routine | Droplet | #4FB286 | Things that normally wear out (oil, tyres, brake pads) |
-| Servis | repair | Wrench | #C0463A | Unexpected breakdowns and repairs |
-| Admin | admin | Receipt | #888780 | Insurance, parking, vignette, paperwork |
-| Tuning | other | Sparkles | #7F77DD | Optional extras you didn't have to buy |
-
-Migration steps in one SQL migration:
+Three views:
 
 ```text
-1. create enum category_role
-2. create table categories + grants + RLS + updated_at trigger
-3. insert 5 defaults for every existing user_id in profiles
-4. add expenses.category_id uuid (nullable)
-5. backfill category_id from old enum per mapping above (scoped per user)
-6. alter expenses.category_id set not null + fk -> categories(id)
-7. rename expenses.category -> expenses.legacy_category
-8. update handle_new_user() to also seed 5 defaults for new users
-9. trigger on categories: block DELETE or role-change away from fuel when it's the user's last role='fuel' row
+Operating only      = (L − P) / K
+Incl. depreciation  = ((L − P) + (P − R)) / K     // only when R is set
+Incl. full purchase = L / K
 ```
 
-## 4. Analytics integrity — `src/lib/calc.ts`
+Invariant (mentioned in acceptance): `(L / K) × K = L`, i.e. the full-purchase view reconciles exactly to the lifetime breakdown total.
 
-The `ExpenseRow` type gains a `role: CategoryRole` field, populated by the expenses loader via a join on `categories`. Then:
+If `R` is not set: `Operating only` and `Incl. full purchase` render; `Incl. depreciation` shows a "Add resale value" prompt (no silent zero depreciation).
 
-- **`totalsByCategory`** (line 51): aggregate by `e.role` into keys `fuel | routine | repair | admin | other`. Returns a `Record<CategoryRole, number>`.
-- **`consumptionPoints`** (line 90) and **`pricePerLiterSeries`** (line 147): replace `e.category === "fuel"` with `e.role === "fuel"`.
-- **`computeBackfill`** fuel rate (line 190): `by.fuel / km` — same semantics, now keyed by role.
-- **`computeLifetimeCost`** per-km variable (line 287): `(by.fuel ?? 0) / km` — same semantics, keyed by role.
-- **`defaultMaintenancePerKm`** (line 348): `(by.repair ?? 0) + (by.routine ?? 0)` over km. Excludes `fuel`, `admin`, and `other` (Tuning is discretionary and must not seed the projected maintenance rate). Pre-migration equivalence: old `service` rows → `repair`, old `other` rows (none currently) → `routine`, so the numeric result is unchanged.
-- **`projectedFuelPrice`** (line 362): `e.role === "fuel"`.
+These reuse `lifetimeBreakdown(...).total_minor` directly — no parallel calc, no new sums.
 
-No other formulas change.
+## 2. Worked example — current vehicle (ZZ TEST)
 
-## 5. Category management UI (Settings)
+Known: `P = 280,000 Kč`, `purchase_odo = 95,000`, `current_odo = 120,000`, so `K = 25,000 km`. Using the accepted `L ≈ 513,000 Kč`:
 
-- New "Categories" section: list ordered by `sort_order` with drag-to-reorder, plus add / rename / recolour / pick-icon / edit-description / delete.
-- Delete flow: if expenses reference the category, show a "Reassign to…" picker; never orphan.
-- Block delete and role-change for the last `role='fuel'` row.
-- Provoz vs Servis stay visually distinct (green Droplet "normal wear" vs red Wrench "unexpected breakdowns") with descriptions visible in the picker.
+| View | Calc | Result |
+|---|---|---|
+| Operating only | (513,000 − 280,000) / 25,000 | **9.32 Kč/km** |
+| Incl. depreciation (example R = 180,000) | (233,000 + 100,000) / 25,000 | **13.32 Kč/km** |
+| Incl. full purchase | 513,000 / 25,000 | **20.52 Kč/km** |
 
-## 6. Dynamic categories everywhere
+Ordering holds: `20.52 > 13.32 > 9.32`. Full-purchase × K = 20.52 × 25,000 = 513,000 = L. ✓
 
-- **`src/lib/categories.tsx`** → rewrite as a hook/provider: `useCategories()` returns the user's list from a Query; `CategoryIcon` looks up by id; export an `iconName → lucide component` map for the picker.
-- **Add/edit expense, expense list, donut, cumulative stacked chart** (`expenses.tsx`): read dynamic categories for colour/icon/label/grouping.
-- **CSV/XLSX import** (`import-expenses-dialog.tsx`): match incoming strings to existing categories by case-insensitive name; unmatched → Provoz fallback. Never auto-create.
-- **OCR** (`ocr.functions.ts`): prompt returns a free-text guess; server maps by name, then by role='fuel' if liters are present; fallback Provoz. Never auto-create.
+Until the user enters R, the depreciation view is unavailable (CTA prompt).
 
-## 7. Out of scope
+## 3. Unchanged values (guardrail)
 
-Purchase price stays a vehicle field. Consumption / backfill / projection formulas otherwise untouched. Existing RLS pattern preserved.
+No edits to `consumptionPoints`, `computeBackfill`, `defaultMaintenancePerKm`, `projection`, or `lifetimeBreakdown`. Fuel = `role==='fuel'`, maintenance seed = `repair + routine` — both untouched. Existing dashboard KPI `costPerKm(expenses) = totalLogged / trackedKm` is replaced by the new widget; no other call sites.
 
-## Files touched
+Accepted values stay: consumption clean 7.56 l/100km, backfilled running 36,901 Kč, projection maintenance 3.01 Kč/km, projection 5-yr 546,853 Kč, lifetime 513,000 Kč.
 
-**New**
-- `supabase/migrations/<ts>_categories.sql`
-- `src/lib/categories.functions.ts` (CRUD server fns + reassign)
-- `src/components/categories-manager.tsx`
-- `src/components/category-picker.tsx`
+## 4. Data
 
-**Edited**
-- `src/lib/categories.tsx` (hook + icon map; drop hardcoded enum)
-- `src/lib/calc.ts` (role-based aggregation as detailed in §4)
-- `src/lib/expenses.functions.ts` (select join with categories; expose role)
-- `src/lib/ocr.functions.ts` (name-based mapping)
-- `src/components/import-expenses-dialog.tsx` (dynamic mapping)
-- `src/routes/_authenticated/expenses.tsx` (dynamic colours/icons, picker)
-- `src/routes/_authenticated/settings.tsx` (mount manager)
-- `src/routes/_authenticated/dashboard.tsx`, `insights.tsx` (only if they read `CATEGORY_META` directly — verified during build)
-- `src/integrations/supabase/types.ts` (auto-regenerated)
+Migration:
+- `ALTER TABLE public.vehicles ADD COLUMN estimated_resale_value_minor bigint NULL CHECK (estimated_resale_value_minor >= 0);`
+- `ALTER TABLE public.profiles ADD COLUMN default_cost_per_km_mode text NOT NULL DEFAULT 'with_depreciation' CHECK (default_cost_per_km_mode IN ('operating','with_depreciation','with_full_purchase'));`
 
-## Acceptance checks after build
+No RLS changes (existing policies cover both tables). Types regenerate after approval.
 
-1. `SELECT count(*) FROM expenses WHERE category_id IS NULL` → 0.
-2. **Numerical parity vs pre-migration snapshot**, all unchanged:
-   - average consumption (l/100km) and per-segment averages
-   - backfill `km_variable_minor` and total
-   - lifetime `per_km_variable_minor` and `backfilled_running_minor`
-   - **projection `maintenance_minor_per_km` default** (repair + routine only, excludes Tuning)
-   - **projection 5-year `total_horizon_minor`**
-   - **projection `fuel_minor_per_km` and `yearly_fuel_minor`**
-3. Settings → Categories supports add/rename/recolour/reorder/delete-with-reassign; last fuel category cannot be deleted or have its role changed.
-4. Donut, stacked chart, and expense rows render with the user's category colours/icons.
-5. Provoz (green Droplet, "normal wear") and Servis (red Wrench, "unexpected breakdowns") are visually and textually distinct in the picker and manager.
+## 5. Server functions
+
+- `vehicles.functions.ts` — extend `CreateVehicleSchema` / `UpdateVehicleSchema` with `estimated_resale_value_minor: z.number().int().min(0).nullable().optional()`.
+- `profile.functions.ts` — extend `UpdateProfileSchema` with `default_cost_per_km_mode: z.enum([...]).optional()`.
+
+## 6. Calc layer (`src/lib/calc.ts`)
+
+Add (pure, no formula changes elsewhere):
+
+```ts
+export type CostPerKmMode = 'operating' | 'with_depreciation' | 'with_full_purchase';
+export type CostPerKmViews = {
+  lifetime_km: number;
+  operating_minor_per_km: number;
+  with_depreciation_minor_per_km: number | null; // null when resale missing
+  with_full_purchase_minor_per_km: number;
+};
+export function costPerKmViews(
+  vehicle: VehicleRow & { current_odometer_km: number; estimated_resale_value_minor: number | null },
+  lifetimeTotalMinor: number,
+): CostPerKmViews
+```
+
+## 7. UI
+
+**Vehicle edit form** (onboarding + garage edit): add "Estimated resale / current value" money input, optional, helper text "Used for honest depreciation-based cost/km. Edit anytime."
+
+**Dashboard cost/km widget** (replaces current single KPI tile):
+- Headline = view chosen by `profile.default_cost_per_km_mode`, big number.
+- Two smaller alternates beneath, each labelled "Operating only", "Incl. depreciation", "Incl. full purchase price".
+- Wrench icon (top-right of widget) → popover with 3 radio options; selecting one calls `updateProfile({ default_cost_per_km_mode })` and invalidates the profile query so the headline swaps.
+- When resale missing: "Incl. depreciation" row shows "Add resale value" link → vehicle edit. If that mode is the user's default, fall back to `with_depreciation`'s prompt as headline placeholder with CTA.
+- Warm theme, mobile-first; no hardcoded colors — use existing `kpi-card` tokens.
+
+**Settings page**: new "Default cost-per-km view" segmented control mirroring the same 3 options, persisted via `updateProfile`.
+
+## 8. Out of scope (noted for later)
+
+Auto-suggesting resale by make/model/age/mileage — premium/later idea. Manual entry only now; a small "later: auto-estimate" note in the field's helper text.
+
+## 9. Build order
+
+1. Migration (vehicles + profiles columns) — wait for approval.
+2. Update server-fn schemas.
+3. Add `costPerKmViews` to `calc.ts` + unit-safe types.
+4. Vehicle edit form field (onboarding + garage edit).
+5. Dashboard widget with wrench popover.
+6. Settings mirror control.
+7. Verify accepted analytics numbers unchanged.

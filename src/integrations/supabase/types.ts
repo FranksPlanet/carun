@@ -192,6 +192,7 @@ export type Database = {
           consumption_style: Database["public"]["Enums"]["consumption_style"]
           created_at: string
           currency: string
+          default_cost_per_km_mode: string
           distance_unit: Database["public"]["Enums"]["distance_unit"]
           locale: string
           updated_at: string
@@ -202,6 +203,7 @@ export type Database = {
           consumption_style?: Database["public"]["Enums"]["consumption_style"]
           created_at?: string
           currency?: string
+          default_cost_per_km_mode?: string
           distance_unit?: Database["public"]["Enums"]["distance_unit"]
           locale?: string
           updated_at?: string
@@ -212,6 +214,7 @@ export type Database = {
           consumption_style?: Database["public"]["Enums"]["consumption_style"]
           created_at?: string
           currency?: string
+          default_cost_per_km_mode?: string
           distance_unit?: Database["public"]["Enums"]["distance_unit"]
           locale?: string
           updated_at?: string
@@ -307,6 +310,7 @@ export type Database = {
           created_at: string
           currency: string
           current_odometer_km: number
+          estimated_resale_value_minor: number | null
           fuel_type: Database["public"]["Enums"]["fuel_type"]
           id: string
           name: string
@@ -322,6 +326,7 @@ export type Database = {
           created_at?: string
           currency?: string
           current_odometer_km?: number
+          estimated_resale_value_minor?: number | null
           fuel_type: Database["public"]["Enums"]["fuel_type"]
           id?: string
           name: string
@@ -337,6 +342,7 @@ export type Database = {
           created_at?: string
           currency?: string
           current_odometer_km?: number
+          estimated_resale_value_minor?: number | null
           fuel_type?: Database["public"]["Enums"]["fuel_type"]
           id?: string
           name?: string
