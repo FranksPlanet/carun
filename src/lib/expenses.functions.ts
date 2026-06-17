@@ -20,7 +20,11 @@ const CreateExpenseSchema = z.object({
 // identify fuel expenses without needing a separate lookup.
 function flatten(rows: any[]): any[] {
   return rows.map((r) => {
-    const cat = r.categories;
+    const raw = r.categories;
+    // PostgREST may embed as either an object (FK detected) or a single-element
+    // array (some join shapes). Normalise to an object so role/name/etc. always
+    // come through to the calc engine — analytics depend on `role`.
+    const cat = Array.isArray(raw) ? raw[0] : raw;
     const { categories: _drop, ...rest } = r;
     return {
       ...rest,
@@ -32,18 +36,20 @@ function flatten(rows: any[]): any[] {
   });
 }
 
+
 export const listExpenses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ vehicle_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: out, error } = await context.supabase
       .from("expenses")
-      .select("*, categories ( id, name, color, icon, role )")
+      .select("*, categories!expenses_category_id_fkey ( id, name, color, icon, role )")
       .eq("vehicle_id", data.vehicle_id)
       .order("date", { ascending: false });
     if (error) throw new Error(error.message);
     return flatten(out ?? []);
   });
+
 
 async function assertOwnsVehicle(supabase: any, vehicleId: string) {
   const { data, error } = await supabase.from("vehicles").select("id").eq("id", vehicleId).maybeSingle();
