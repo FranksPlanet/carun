@@ -20,7 +20,11 @@ const CreateExpenseSchema = z.object({
 // identify fuel expenses without needing a separate lookup.
 function flatten(rows: any[]): any[] {
   return rows.map((r) => {
-    const cat = r.categories;
+    const raw = r.categories;
+    // PostgREST may embed as either an object (FK detected) or a single-element
+    // array (some join shapes). Normalise to an object so role/name/etc. always
+    // come through to the calc engine — analytics depend on `role`.
+    const cat = Array.isArray(raw) ? raw[0] : raw;
     const { categories: _drop, ...rest } = r;
     return {
       ...rest,
@@ -31,6 +35,7 @@ function flatten(rows: any[]): any[] {
     };
   });
 }
+
 
 export const listExpenses = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
