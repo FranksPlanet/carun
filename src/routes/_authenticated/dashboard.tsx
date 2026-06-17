@@ -44,6 +44,7 @@ function Dashboard() {
     enabled: !!vehicle,
   });
 
+  const settings = profileQ.data ?? defaultSettings;
   const categoriesQ = useCategories();
   const categories: CategoryRow[] = categoriesQ.data ?? [];
   // Map category role onto each row so calc.ts can identify fuel expenses.
@@ -52,6 +53,8 @@ function Dashboard() {
     const byId = new Map(categories.map((c: CategoryRow) => [c.id, c.role] as const));
     return raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
   }, [expensesQ.data, categories]);
+
+
 
 
 
