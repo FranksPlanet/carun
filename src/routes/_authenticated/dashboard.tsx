@@ -35,6 +35,8 @@ function Dashboard() {
   const navigate = useNavigate();
   const fetchVehicles = useServerFn(listVehicles);
   const fetchExpenses = useServerFn(listExpenses);
+  const fetchRecurring = useServerFn(listRecurring);
+  const fetchRepairs = useServerFn(listRepairs);
   const fetchProfile = useServerFn(getProfile);
 
   const profileQ = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
