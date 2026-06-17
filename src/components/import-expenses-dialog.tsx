@@ -21,6 +21,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { bulkCreateExpenses } from "@/lib/expenses.functions";
 import { moneyMajorToMinor, parseLocalNumber } from "@/lib/format";
 import * as XLSX from "xlsx";
+import {
+  useCategories,
+  findCategoryByName,
+  defaultForRole,
+  type CategoryRow,
+} from "@/lib/categories";
 
 type RevTabField = "date" | "odometer" | "category" | "amount" | "liters" | "note" | "";
 
@@ -46,14 +52,16 @@ function autodetect(header: string): RevTabField {
   return "";
 }
 
-function normalizeCategory(v: any): "fuel" | "service" | "admin" | "other" {
-  const s = String(v ?? "").toLowerCase().trim();
-  if (/fuel|gas|petrol|diesel|benz|nafta|paliv/.test(s)) return "fuel";
-  if (/serv|repair|opra|údrž|udrz|garage/.test(s)) return "service";
-  if (/admin|insur|tax|pojiš|pojis|daň|dan|stk|emise/.test(s)) return "admin";
-  if (!s) return "other";
-  if (s === "fuel" || s === "service" || s === "admin" || s === "other") return s;
-  return "other";
+// Case-insensitive name match against the user's categories. Never creates a
+// new category — unmapped rows fall back to a sensible default the caller picks.
+function resolveCategory(
+  cats: CategoryRow[],
+  raw: any,
+  fallback: CategoryRow | undefined,
+): CategoryRow | undefined {
+  const s = String(raw ?? "").trim();
+  if (!s) return fallback;
+  return findCategoryByName(cats, s) ?? fallback;
 }
 
 function normalizeDate(v: any): string | null {
@@ -100,6 +108,10 @@ export function ImportExpensesDialog({
 }) {
   const qc = useQueryClient();
   const bulkFn = useServerFn(bulkCreateExpenses);
+  const catsQ = useCategories();
+  const cats = catsQ.data ?? [];
+  const fuelDefault = defaultForRole(cats, "fuel");
+  const routineDefault = defaultForRole(cats, "routine") ?? cats[0];
 
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Record<string, any>[]>([]);
@@ -178,25 +190,34 @@ export function ImportExpensesDialog({
     mutationFn: async () => {
       const valid: any[] = [];
       const skipped: string[] = [];
+      if (cats.length === 0) {
+        throw new Error("Categories aren't loaded yet — please retry in a moment.");
+      }
       for (const r of rows) {
         const date = normalizeDate(r[mapping.date]);
         const odo = Math.round(normalizeNumber(r[mapping.odometer]));
         const amt = normalizeNumber(r[mapping.amount]);
-        const cat = mapping.category ? normalizeCategory(r[mapping.category]) : "other";
         const lt = mapping.liters ? normalizeNumber(r[mapping.liters]) : null;
         const note = mapping.note ? String(r[mapping.note] ?? "").slice(0, 500) : null;
+        const hasLiters = lt != null && isFinite(lt) && lt > 0;
+        const fallback = hasLiters ? fuelDefault ?? routineDefault : routineDefault;
+        const cat = mapping.category
+          ? resolveCategory(cats, r[mapping.category], fallback)
+          : fallback;
         if (!date) { skipped.push("invalid date"); continue; }
         if (!isFinite(odo) || odo < 0) { skipped.push("invalid odometer"); continue; }
         if (!isFinite(amt) || amt <= 0) { skipped.push("invalid amount"); continue; }
+        if (!cat) { skipped.push("no category available"); continue; }
+        const isFuel = cat.role === "fuel";
         valid.push({
           vehicle_id: vehicleId,
           date,
           odometer_km: odo,
-          category: cat,
+          category_id: cat.id,
           amount_minor: moneyMajorToMinor(amt, currency),
           currency,
-          liters: cat === "fuel" && lt != null && isFinite(lt) && lt > 0 ? lt : null,
-          full_tank: cat === "fuel" ? true : null,
+          liters: isFuel && hasLiters ? lt : null,
+          full_tank: isFuel ? true : null,
           tags: [],
           note: note || null,
         });

@@ -8,22 +8,24 @@ export const exportAllData = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const [vehicles, expenses, repairs, recurring, reminders, profile] = await Promise.all([
+    const [vehicles, expenses, repairs, recurring, reminders, profile, categories] = await Promise.all([
       supabase.from("vehicles").select("*"),
       supabase.from("expenses").select("*"),
       supabase.from("past_repairs").select("*"),
       supabase.from("recurring_costs").select("*"),
       supabase.from("reminders").select("*"),
       supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
+      supabase.from("categories").select("*"),
     ]);
     const firstError =
-      vehicles.error || expenses.error || repairs.error || recurring.error || reminders.error || profile.error;
+      vehicles.error || expenses.error || repairs.error || recurring.error || reminders.error || profile.error || categories.error;
     if (firstError) throw new Error(firstError.message);
     return {
       exported_at: new Date().toISOString(),
       user_id: userId,
       profile: profile.data ?? null,
       vehicles: vehicles.data ?? [],
+      categories: categories.data ?? [],
       expenses: expenses.data ?? [],
       past_repairs: repairs.data ?? [],
       recurring_costs: recurring.data ?? [],
@@ -42,7 +44,7 @@ export const deleteAccountAndAllData = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // 1) Delete app rows under the user's RLS-scoped client.
-    const tables = ["expenses", "past_repairs", "recurring_costs", "reminders", "vehicles", "profiles"] as const;
+    const tables = ["expenses", "past_repairs", "recurring_costs", "reminders", "categories", "vehicles", "profiles"] as const;
     for (const tbl of tables) {
       const { error } = await supabase.from(tbl).delete().eq("user_id", userId);
       if (error) throw new Error(`Failed deleting ${tbl}: ${error.message}`);

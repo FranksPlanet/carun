@@ -1,13 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Settings as SettingsIcon, Download, Trash2 } from "lucide-react";
+import { Settings as SettingsIcon, Download, Trash2, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { exportAllData, deleteAccountAndAllData } from "@/lib/account.functions";
+import { CategoriesManager } from "@/components/categories-manager";
 import { t } from "@/lib/strings";
 
 export const Route = createFileRoute("/_authenticated/settings")({
@@ -66,6 +67,13 @@ function SettingsPage() {
       <h1 className="text-2xl font-semibold flex items-center gap-2">
         <SettingsIcon className="size-6" aria-hidden /> {t.nav.settings}
       </h1>
+
+      <section className="kpi-card space-y-3">
+        <h2 className="font-semibold flex items-center gap-2">
+          <Tag className="size-4" aria-hidden /> Categories
+        </h2>
+        <CategoriesManager />
+      </section>
 
       <section className="kpi-card space-y-3">
         <h2 className="font-semibold flex items-center gap-2">
