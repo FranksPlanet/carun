@@ -174,10 +174,13 @@ function Dashboard() {
 
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="kpi-card">
-          <div className="kpi-label">{t.kpi.costPerKm}</div>
-          <div className="kpi-value num">{formatCostPerKm(stats.cpk, settings)}</div>
-        </div>
+        {cpkViews && (
+          <CostPerKmWidget
+            views={cpkViews}
+            mode={cpkMode}
+            settings={{ ...settings, currency: vehicle?.currency ?? settings.currency }}
+          />
+        )}
         <div className="kpi-card">
           <div className="kpi-label">{t.kpi.avgConsumption}</div>
           <div className="kpi-value num">{formatConsumption(stats.avgCons, settings)}</div>
