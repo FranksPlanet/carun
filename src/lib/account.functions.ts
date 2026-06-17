@@ -44,7 +44,7 @@ export const deleteAccountAndAllData = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // 1) Delete app rows under the user's RLS-scoped client.
-    const tables = ["expenses", "past_repairs", "recurring_costs", "reminders", "vehicles", "profiles"] as const;
+    const tables = ["expenses", "past_repairs", "recurring_costs", "reminders", "categories", "vehicles", "profiles"] as const;
     for (const tbl of tables) {
       const { error } = await supabase.from(tbl).delete().eq("user_id", userId);
       if (error) throw new Error(`Failed deleting ${tbl}: ${error.message}`);
