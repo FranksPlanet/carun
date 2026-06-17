@@ -19,6 +19,8 @@ import { listExpenses } from "@/lib/expenses.functions";
 import { listRecurring } from "@/lib/recurring.functions";
 import { listRepairs } from "@/lib/repairs.functions";
 import { getProfile } from "@/lib/profile.functions";
+import { useCategories, type CategoryRow } from "@/lib/categories";
+
 import {
   consumptionPoints,
   segmentedAverages,
