@@ -1,15 +1,16 @@
 import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Receipt, TrendingUp, Menu, Warehouse, Settings, LogOut, Plus } from "lucide-react";
+import { Plus, Warehouse, Settings as SettingsIcon, Shield, Mail, LogOut } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { t } from "@/lib/strings";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -22,16 +23,16 @@ export const Route = createFileRoute("/_authenticated")({
   component: AuthLayout,
 });
 
-const tabs = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/expenses", label: "Expenses", icon: Receipt },
-  { to: "/insights", label: "Insights", icon: TrendingUp },
+const topLinks = [
+  { to: "/expenses", label: "Expenses" },
+  { to: "/insights", label: "Insights" },
 ] as const;
 
 function AuthLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   async function signOut() {
     await queryClient.cancelQueries();
@@ -48,66 +49,89 @@ function AuthLayout() {
     }
   }
 
-  const HamburgerMenu = (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Menu">
-          <Menu className="size-5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => navigate({ to: "/garage" })}>
-          <Warehouse className="size-4 mr-2" /> {t.nav.garage}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate({ to: "/settings" })}>
-          <Settings className="size-4 mr-2" /> {t.nav.settings}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={signOut}>
-          <LogOut className="size-4 mr-2" /> {t.nav.signOut}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  function go(to: string) {
+    setMenuOpen(false);
+    navigate({ to });
+  }
 
   return (
-    <div className="min-h-dvh flex flex-col pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 bg-background">
-      <header className="border-b border-border bg-card/80 backdrop-blur sticky top-0 z-20">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link to="/dashboard" className="inline-flex items-center gap-2">
-            <div className="size-8 rounded-xl bg-primary grid place-items-center">
-              <span className="font-display font-bold text-primary-foreground text-sm">R</span>
+    <div className="min-h-dvh flex flex-col bg-background pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
+      {/* Top app bar — deep terracotta, fills the notch / status-bar area */}
+      <header
+        className="sticky top-0 z-30 bg-[#993C1D] text-white"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
+        <div className="mx-auto max-w-3xl px-3 sm:px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-2 min-h-14">
+          {/* Brand: logo slot + wordmark, links home */}
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-2 mr-auto min-w-0"
+            aria-label="RevTab — go to dashboard"
+          >
+            <div
+              className="size-8 rounded-lg bg-white/10 ring-1 ring-white/20 grid place-items-center overflow-hidden shrink-0"
+              aria-label="Logo slot"
+              data-logo-slot
+            >
+              {/* Drop a white logo image here later, e.g. <img src="/logo-white.svg" alt="" /> */}
+              <span className="font-display font-bold text-white text-sm">R</span>
             </div>
-            <span className="font-display font-semibold text-lg tracking-tight">{t.appName}</span>
+            <span className="font-display font-semibold text-lg tracking-tight truncate">
+              {t.appName}
+            </span>
           </Link>
-          <nav className="hidden md:flex items-center gap-1">
-            {tabs.map((tab) => {
-              const active = pathname.startsWith(tab.to);
+
+          {/* Right: text nav + MENU button */}
+          <nav className="flex items-center gap-1 sm:gap-2">
+            {topLinks.map((l) => {
+              const active = pathname.startsWith(l.to);
               return (
                 <Link
-                  key={tab.to}
-                  to={tab.to}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  key={l.to}
+                  to={l.to}
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      ? "bg-white text-[#993C1D]"
+                      : "text-white/85 hover:text-white hover:bg-white/10"
                   }`}
                 >
-                  {tab.label}
+                  {l.label}
                 </Link>
               );
             })}
+
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  className="px-2.5 sm:px-3 py-1.5 rounded-md text-sm font-semibold tracking-wide text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+                  aria-label="Open menu"
+                >
+                  MENU
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-72 sm:w-80">
+                <SheetHeader>
+                  <SheetTitle>Menu</SheetTitle>
+                </SheetHeader>
+                <nav className="mt-6 flex flex-col">
+                  <MenuLink onClick={() => go("/garage")} icon={<Warehouse className="size-4" />} label="Garage" />
+                  <MenuLink onClick={() => go("/settings")} icon={<SettingsIcon className="size-4" />} label="Settings" />
+                  <MenuLink onClick={() => go("/privacy")} icon={<Shield className="size-4" />} label="Privacy" />
+                  <MenuLink onClick={() => go("/contact")} icon={<Mail className="size-4" />} label="Contact" />
+                  <div className="my-2 border-t border-border" />
+                  <MenuLink
+                    onClick={() => {
+                      setMenuOpen(false);
+                      void signOut();
+                    }}
+                    icon={<LogOut className="size-4" />}
+                    label={t.nav.signOut}
+                  />
+                </nav>
+              </SheetContent>
+            </Sheet>
           </nav>
-          <div className="flex items-center gap-1">
-            <Button
-              onClick={openAddExpense}
-              size="sm"
-              className="hidden md:inline-flex rounded-full"
-            >
-              <Plus className="size-4 mr-1" /> Add
-            </Button>
-            {HamburgerMenu}
-          </div>
         </div>
       </header>
 
@@ -115,49 +139,42 @@ function AuthLayout() {
         <Outlet />
       </main>
 
-      {/* Mobile bottom nav with prominent + action */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-20">
-        <div className="bg-card/95 backdrop-blur border-t border-border pb-[env(safe-area-inset-bottom)]">
-          <div className="grid grid-cols-4 items-center">
-            <BottomTab to={tabs[0].to} label={tabs[0].label} Icon={tabs[0].icon} active={pathname.startsWith(tabs[0].to)} />
-            <BottomTab to={tabs[1].to} label={tabs[1].label} Icon={tabs[1].icon} active={pathname.startsWith(tabs[1].to)} />
-            <div className="flex justify-center">
-              <button
-                onClick={openAddExpense}
-                aria-label="Add expense"
-                className="-mt-6 size-14 rounded-full bg-primary text-primary-foreground shadow-lg grid place-items-center active:scale-95 transition-transform"
-              >
-                <Plus className="size-6" />
-              </button>
-            </div>
-            <BottomTab to={tabs[2].to} label={tabs[2].label} Icon={tabs[2].icon} active={pathname.startsWith(tabs[2].to)} />
-          </div>
+      {/* Bottom: single full-width primary Add expense button */}
+      <div
+        className="fixed inset-x-0 bottom-0 z-20 bg-gradient-to-t from-background via-background/95 to-transparent pt-3 px-4"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)" }}
+      >
+        <div className="mx-auto max-w-3xl">
+          <Button
+            onClick={openAddExpense}
+            size="lg"
+            className="w-full h-14 text-base font-semibold rounded-2xl shadow-lg"
+          >
+            <Plus className="size-5 mr-2" /> Add expense
+          </Button>
         </div>
-      </nav>
+      </div>
     </div>
   );
 }
 
-function BottomTab({
-  to,
+function MenuLink({
+  onClick,
+  icon,
   label,
-  Icon,
-  active,
 }: {
-  to: string;
+  onClick: () => void;
+  icon: React.ReactNode;
   label: string;
-  Icon: typeof Plus;
-  active: boolean;
 }) {
   return (
-    <Link
-      to={to}
-      className={`flex flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium ${
-        active ? "text-primary" : "text-muted-foreground"
-      }`}
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-3 px-2 py-3 rounded-md text-left text-base font-medium text-foreground hover:bg-secondary transition-colors"
     >
-      <Icon className="size-5" />
+      <span className="text-muted-foreground">{icon}</span>
       {label}
-    </Link>
+    </button>
   );
 }
