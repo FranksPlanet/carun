@@ -350,7 +350,10 @@ export function defaultMaintenancePerKm(expenses: ExpenseRow[]): number {
   const km = trackedKm(expenses);
   if (km <= 0) return 0;
   const by = totalsByCategory(expenses);
-  return ((by.service ?? 0) + (by.other ?? 0)) / km;
+  // Maintenance projection seed: routine wear + unexpected repairs. Excludes
+  // fuel (priced separately), admin (recurring/time-based), and other
+  // (discretionary spend like Tuning shouldn't lift the baseline).
+  return ((by.repair ?? 0) + (by.routine ?? 0)) / km;
 }
 
 export function defaultAnnualKm(expenses: ExpenseRow[]): number {
