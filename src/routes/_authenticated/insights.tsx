@@ -86,7 +86,8 @@ function InsightsPage() {
     enabled: !!vehicle,
   });
 
-  const { categories } = useCategories();
+  const categoriesQ = useCategories();
+  const categories: CategoryRow[] = categoriesQ.data ?? [];
 
   const settings = profileQ.data ?? defaultSettings;
   const currency = vehicle?.currency ?? settings.currency;
@@ -97,9 +98,10 @@ function InsightsPage() {
   // role would blank out consumption, fuel rate, and maintenance/km.
   const expenses = useMemo<ExpenseRow[]>(() => {
     const raw = (expensesQ.data ?? []) as any[];
-    const byId = new Map(categories.map((c) => [c.id, c.role] as const));
+    const byId = new Map(categories.map((c: CategoryRow) => [c.id, c.role] as const));
     return raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
   }, [expensesQ.data, categories]);
+
   const recurring = (recurringQ.data ?? []) as { amount_minor_per_year: number }[];
   const repairs = (repairsQ.data ?? []) as { amount_minor: number }[];
 
