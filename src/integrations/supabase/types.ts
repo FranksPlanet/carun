@@ -14,15 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      categories: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          icon: string
+          id: string
+          name: string
+          role: Database["public"]["Enums"]["category_role"]
+          sort_order: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          description?: string | null
+          icon: string
+          id?: string
+          name: string
+          role: Database["public"]["Enums"]["category_role"]
+          sort_order?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          name?: string
+          role?: Database["public"]["Enums"]["category_role"]
+          sort_order?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount_minor: number
-          category: Database["public"]["Enums"]["expense_category"]
+          category_id: string
           created_at: string
           currency: string
           date: string
           full_tank: boolean | null
           id: string
+          legacy_category:
+            | Database["public"]["Enums"]["expense_category"]
+            | null
           liters: number | null
           note: string | null
           odometer_km: number
@@ -34,12 +76,15 @@ export type Database = {
         }
         Insert: {
           amount_minor: number
-          category: Database["public"]["Enums"]["expense_category"]
+          category_id: string
           created_at?: string
           currency?: string
           date: string
           full_tank?: boolean | null
           id?: string
+          legacy_category?:
+            | Database["public"]["Enums"]["expense_category"]
+            | null
           liters?: number | null
           note?: string | null
           odometer_km: number
@@ -51,12 +96,15 @@ export type Database = {
         }
         Update: {
           amount_minor?: number
-          category?: Database["public"]["Enums"]["expense_category"]
+          category_id?: string
           created_at?: string
           currency?: string
           date?: string
           full_tank?: boolean | null
           id?: string
+          legacy_category?:
+            | Database["public"]["Enums"]["expense_category"]
+            | null
           liters?: number | null
           note?: string | null
           odometer_km?: number
@@ -67,6 +115,13 @@ export type Database = {
           vehicle_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "expenses_vehicle_id_fkey"
             columns: ["vehicle_id"]
@@ -300,9 +355,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      seed_default_categories: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
+      category_role: "fuel" | "routine" | "repair" | "admin" | "other"
       consumption_style: "l_per_100km" | "km_per_l" | "mpg"
       date_precision: "exact" | "month" | "season" | "year"
       distance_unit: "km" | "mi"
@@ -449,6 +508,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      category_role: ["fuel", "routine", "repair", "admin", "other"],
       consumption_style: ["l_per_100km", "km_per_l", "mpg"],
       date_precision: ["exact", "month", "season", "year"],
       distance_unit: ["km", "mi"],
