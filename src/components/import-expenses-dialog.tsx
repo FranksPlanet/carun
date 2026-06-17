@@ -21,6 +21,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { bulkCreateExpenses } from "@/lib/expenses.functions";
 import { moneyMajorToMinor, parseLocalNumber } from "@/lib/format";
 import * as XLSX from "xlsx";
+import {
+  useCategories,
+  findCategoryByName,
+  defaultForRole,
+  type CategoryRow,
+} from "@/lib/categories";
 
 type RevTabField = "date" | "odometer" | "category" | "amount" | "liters" | "note" | "";
 
@@ -46,14 +52,16 @@ function autodetect(header: string): RevTabField {
   return "";
 }
 
-function normalizeCategory(v: any): "fuel" | "service" | "admin" | "other" {
-  const s = String(v ?? "").toLowerCase().trim();
-  if (/fuel|gas|petrol|diesel|benz|nafta|paliv/.test(s)) return "fuel";
-  if (/serv|repair|opra|údrž|udrz|garage/.test(s)) return "service";
-  if (/admin|insur|tax|pojiš|pojis|daň|dan|stk|emise/.test(s)) return "admin";
-  if (!s) return "other";
-  if (s === "fuel" || s === "service" || s === "admin" || s === "other") return s;
-  return "other";
+// Case-insensitive name match against the user's categories. Never creates a
+// new category — unmapped rows fall back to a sensible default the caller picks.
+function resolveCategory(
+  cats: CategoryRow[],
+  raw: any,
+  fallback: CategoryRow | undefined,
+): CategoryRow | undefined {
+  const s = String(raw ?? "").trim();
+  if (!s) return fallback;
+  return findCategoryByName(cats, s) ?? fallback;
 }
 
 function normalizeDate(v: any): string | null {
