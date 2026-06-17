@@ -198,6 +198,18 @@
     border-color: var(--color-primary);
     color: var(--color-primary-foreground);
   }
+  .story-pill {
+    display: inline;
+    border-bottom: 1px dashed color-mix(in oklab, var(--color-primary) 55%, transparent);
+    color: var(--color-foreground);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .story-pill:hover {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+  }
 }
 
 /* Fonts loaded via <link> in src/routes/__root.tsx */
