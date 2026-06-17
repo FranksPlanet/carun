@@ -108,6 +108,10 @@ export function ImportExpensesDialog({
 }) {
   const qc = useQueryClient();
   const bulkFn = useServerFn(bulkCreateExpenses);
+  const catsQ = useCategories();
+  const cats = catsQ.data ?? [];
+  const fuelDefault = defaultForRole(cats, "fuel");
+  const routineDefault = defaultForRole(cats, "routine") ?? cats[0];
 
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<Record<string, any>[]>([]);
