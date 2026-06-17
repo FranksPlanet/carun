@@ -1,85 +1,123 @@
-## Scope
+# Plan: User-editable expense categories
 
-Build only the onboarding wizard, the vehicle-creation persistence, and a real Dashboard that reads from the database. Do **not** create the expenses / fuel / projection / garage / settings pages — their nav items stay and continue to 404 for now (expected).
+## 1. Current data (confirmed)
 
-## 1. Database migration
+Existing `expenses.category` distribution (enum `expense_category`):
 
-Existing tables (`vehicles`, `past_repairs`, `recurring_costs`) already have RLS scoped to `auth.uid() = user_id`, so they're reused.
+| Old value | Count |
+|---|---|
+| fuel | 20 |
+| service | 4 |
+| admin | 2 |
+| other | 0 |
 
-One small addition needed on `vehicles` to support the "current odometer" captured in step 1 of the wizard:
+## 2. Migration mapping (no data loss)
 
-- Add column `vehicles.current_odometer_km integer not null default 0`.
+| Old enum | → New category | Role |
+|---|---|---|
+| `fuel` | **Nafta** | fuel |
+| `service` | **Servis** | repair |
+| `admin` | **Admin** | admin |
+| `other` | **Provoz** (safe default) | routine |
 
-No other schema changes; `past_repairs` already has the fuzzy-date columns (`precision`, `exact_date`, `season`, `month`, `year`, `representative_date`).
+Every expense ends up with a valid `category_id`. The old enum column is kept (renamed to `legacy_category`) until a later batch, so we can rollback without losing the original label.
 
-## 2. `/onboarding` route — 5-step wizard
+## 3. Data model
 
-File: `src/routes/_authenticated/onboarding.tsx` (replace current single-form version with a real 5-step wizard).
+New table `public.categories`:
 
-Local component state holds the in-progress draft; nothing is written to the DB until step 5 "Finish".
+- `id uuid pk`, `user_id uuid not null`
+- `name text not null`, `color text not null`, `icon text not null`
+- `role category_role not null` — enum `('fuel','routine','repair','admin','other')`
+- `sort_order int not null default 0`, `description text`
+- `created_at`, `updated_at`
+- `unique (user_id, name)`
+- RLS: `FOR ALL USING (auth.uid()=user_id) WITH CHECK (auth.uid()=user_id)`, plus GRANTs to `authenticated` / `service_role`.
 
-Steps (titles come from `t.onboarding.*`):
+Seeded defaults (for every existing user + new users via `handle_new_user`):
 
-1. **Vehicle basics** — name, plate (optional), fuel type select (Diesel / Petrol / LPG / Hybrid / Electric), current odometer (km).
-2. **When you got it** — purchase date (date picker), odometer at purchase, purchase price + currency (default CZK).
-3. **Big repairs you remember** — repeatable list. Each entry: label, amount, and a fuzzy date with a precision selector:
-   - `exact` → date picker
-   - `month` → month + year
-   - `season` → season (spring/summer/autumn/winter) + year
-   - `year` → year only
+| Name | Role | Icon | Color | Description |
+|---|---|---|---|---|
+| Nafta | fuel | Fuel | #EF9F27 | Diesel and other fuel fill-ups |
+| Provoz | routine | Droplet | #4FB286 | Things that normally wear out (oil, tyres, brake pads) |
+| Servis | repair | Wrench | #C0463A | Unexpected breakdowns and repairs |
+| Admin | admin | Receipt | #888780 | Insurance, parking, vignette, paperwork |
+| Tuning | other | Sparkles | #7F77DD | Optional extras you didn't have to buy |
 
-   Compute a `representative_date` (e.g. midpoint of the chosen precision) for sorting. Skippable.
-4. **Yearly costs** — repeatable list of `{type, amount/year}` using the existing `recurring_costs.type` enum (insurance / road_tax / inspection / parking / other). Skippable.
-5. **You're set** — summary + Finish button.
+Migration steps in one SQL migration:
 
-Navigation: Back / Next on each step, Skip on 3 & 4, Finish on 5. Uses `useNavigate` to go to `/dashboard` after a successful save.
+```text
+1. create enum category_role
+2. create table categories + grants + RLS + updated_at trigger
+3. insert 5 defaults for every existing user_id in profiles
+4. add expenses.category_id uuid (nullable)
+5. backfill category_id from old enum per mapping above (scoped per user)
+6. alter expenses.category_id set not null + fk -> categories(id)
+7. rename expenses.category -> expenses.legacy_category
+8. update handle_new_user() to also seed 5 defaults for new users
+9. trigger on categories: block DELETE or role-change away from fuel when it's the user's last role='fuel' row
+```
 
-### Persistence on Finish
+## 4. Analytics integrity — `src/lib/calc.ts`
 
-Single async submit in order:
+The `ExpenseRow` type gains a `role: CategoryRole` field, populated by the expenses loader via a join on `categories`. Then:
 
-1. `createVehicle` (extended to accept `current_odometer_km`) → returns `vehicle.id`.
-2. For each remembered repair → `createPastRepair({ vehicle_id, ... })`.
-3. For each yearly cost → `createRecurring({ vehicle_id, type, amount_minor_per_year, currency })`.
-4. Invalidate `['vehicles']` query, navigate to `/dashboard`.
+- **`totalsByCategory`** (line 51): aggregate by `e.role` into keys `fuel | routine | repair | admin | other`. Returns a `Record<CategoryRole, number>`.
+- **`consumptionPoints`** (line 90) and **`pricePerLiterSeries`** (line 147): replace `e.category === "fuel"` with `e.role === "fuel"`.
+- **`computeBackfill`** fuel rate (line 190): `by.fuel / km` — same semantics, now keyed by role.
+- **`computeLifetimeCost`** per-km variable (line 287): `(by.fuel ?? 0) / km` — same semantics, keyed by role.
+- **`defaultMaintenancePerKm`** (line 348): `(by.repair ?? 0) + (by.routine ?? 0)` over km. Excludes `fuel`, `admin`, and `other` (Tuning is discretionary and must not seed the projected maintenance rate). Pre-migration equivalence: old `service` rows → `repair`, old `other` rows (none currently) → `routine`, so the numeric result is unchanged.
+- **`projectedFuelPrice`** (line 362): `e.role === "fuel"`.
 
-If any insert fails, show the error inline and keep the wizard open (vehicle row already created is fine — user lands on dashboard with partial data on retry).
+No other formulas change.
 
-## 3. Server functions
+## 5. Category management UI (Settings)
 
-- `src/lib/vehicles.functions.ts` — extend `CreateVehicleSchema` and `UpdateVehicleSchema` with `current_odometer_km` (int ≥ 0).
-- `src/lib/repairs.functions.ts` — add `createPastRepair` (if not present) matching the existing schema (label, amount_minor, currency, precision, exact_date / season / month / year, representative_date, vehicle_id).
-- `src/lib/recurring.functions.ts` — already has `createRecurring`. Reuse.
+- New "Categories" section: list ordered by `sort_order` with drag-to-reorder, plus add / rename / recolour / pick-icon / edit-description / delete.
+- Delete flow: if expenses reference the category, show a "Reassign to…" picker; never orphan.
+- Block delete and role-change for the last `role='fuel'` row.
+- Provoz vs Servis stay visually distinct (green Droplet "normal wear" vs red Wrench "unexpected breakdowns") with descriptions visible in the picker.
 
-All gated by `requireSupabaseAuth`; `user_id` set from `context.userId`. RLS already restricts reads to owner.
+## 6. Dynamic categories everywhere
 
-## 4. Dashboard — make it real
+- **`src/lib/categories.tsx`** → rewrite as a hook/provider: `useCategories()` returns the user's list from a Query; `CategoryIcon` looks up by id; export an `iconName → lucide component` map for the picker.
+- **Add/edit expense, expense list, donut, cumulative stacked chart** (`expenses.tsx`): read dynamic categories for colour/icon/label/grouping.
+- **CSV/XLSX import** (`import-expenses-dialog.tsx`): match incoming strings to existing categories by case-insensitive name; unmatched → Provoz fallback. Never auto-create.
+- **OCR** (`ocr.functions.ts`): prompt returns a free-text guess; server maps by name, then by role='fuel' if liters are present; fallback Provoz. Never auto-create.
 
-File: `src/routes/_authenticated/dashboard.tsx`.
+## 7. Out of scope
 
-- Already calls `listVehicles` via `useServerFn` + `useQuery`. Keep that.
-- Empty state ("No vehicles yet" + Add vehicle CTA → `/onboarding`) only when `vehiclesQ.isSuccess && vehicles.length === 0`. While loading, show a skeleton/"Loading…" — never the empty state.
-- When vehicles exist:
-  - Vehicle switcher chips at the top (already scaffolded).
-  - Selected vehicle's "basic stats" card: name, plate, fuel type, current odometer, purchase date, purchase odometer, purchase price (formatted).
-  - Keep the existing KPI grid and charts; they'll naturally read zeros until expenses exist.
-- "Add vehicle" buttons (dashboard empty state + "+ Add" chip) navigate to `/onboarding` via `<Link to="/onboarding">` / `navigate({ to: "/onboarding" })`. (Garage page already does this; leave it.)
+Purchase price stays a vehicle field. Consumption / backfill / projection formulas otherwise untouched. Existing RLS pattern preserved.
 
-## 5. Out of scope (explicit)
+## Files touched
 
-- No `/expenses`, `/fuel`, `/projection`, `/garage`, `/settings` page work. The existing placeholder files can stay; nav items continue to point at their paths and may 404 — expected for this step.
+**New**
+- `supabase/migrations/<ts>_categories.sql`
+- `src/lib/categories.functions.ts` (CRUD server fns + reassign)
+- `src/components/categories-manager.tsx`
+- `src/components/category-picker.tsx`
 
-## Acceptance
+**Edited**
+- `src/lib/categories.tsx` (hook + icon map; drop hardcoded enum)
+- `src/lib/calc.ts` (role-based aggregation as detailed in §4)
+- `src/lib/expenses.functions.ts` (select join with categories; expose role)
+- `src/lib/ocr.functions.ts` (name-based mapping)
+- `src/components/import-expenses-dialog.tsx` (dynamic mapping)
+- `src/routes/_authenticated/expenses.tsx` (dynamic colours/icons, picker)
+- `src/routes/_authenticated/settings.tsx` (mount manager)
+- `src/routes/_authenticated/dashboard.tsx`, `insights.tsx` (only if they read `CATEGORY_META` directly — verified during build)
+- `src/integrations/supabase/types.ts` (auto-regenerated)
 
-Logged-in user → clicks "Add vehicle" → completes 5-step wizard → lands on `/dashboard` → sees the new vehicle's name + stats. Reload page → vehicle still there (because it's served from Supabase via `listVehicles`).
+## Acceptance checks after build
 
-## Technical notes
-
-- `past_repairs` row shape per precision:
-  - `exact` → set `exact_date`, derive `month`/`year` from it, `representative_date = exact_date`.
-  - `month` → set `month` + `year`, `representative_date = YYYY-MM-15`.
-  - `season` → set `season` + `year`, `representative_date` = season midpoint (e.g. spring → Apr 15).
-  - `year` → set `year`, `representative_date = YYYY-07-01`.
-- Amounts entered in major units in the UI, persisted as `*_minor` (×100).
-- All new server fns return plain DTOs; no `Response` objects.
-- `attachSupabaseAuth` is already wired in `src/start.ts` (existing protected fns work).
+1. `SELECT count(*) FROM expenses WHERE category_id IS NULL` → 0.
+2. **Numerical parity vs pre-migration snapshot**, all unchanged:
+   - average consumption (l/100km) and per-segment averages
+   - backfill `km_variable_minor` and total
+   - lifetime `per_km_variable_minor` and `backfilled_running_minor`
+   - **projection `maintenance_minor_per_km` default** (repair + routine only, excludes Tuning)
+   - **projection 5-year `total_horizon_minor`**
+   - **projection `fuel_minor_per_km` and `yearly_fuel_minor`**
+3. Settings → Categories supports add/rename/recolour/reorder/delete-with-reassign; last fuel category cannot be deleted or have its role changed.
+4. Donut, stacked chart, and expense rows render with the user's category colours/icons.
+5. Provoz (green Droplet, "normal wear") and Servis (red Wrench, "unexpected breakdowns") are visually and textually distinct in the picker and manager.
