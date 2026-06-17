@@ -58,7 +58,24 @@ function GaragePage() {
                 <div className="text-xs text-muted-foreground truncate">
                   {v.plate ? `${v.plate} · ` : ""}{cap(v.fuel_type)} · {formatDistance(v.current_odometer_km ?? 0, settings)}
                 </div>
+                <div className="text-xs text-muted-foreground truncate">
+                  Resale: {v.estimated_resale_value_minor != null
+                    ? formatMoney(v.estimated_resale_value_minor, { ...settings, currency: v.currency ?? settings.currency })
+                    : "not set"}
+                </div>
               </div>
+              <VehicleEditDialog
+                vehicle={{
+                  id: v.id,
+                  currency: v.currency ?? settings.currency,
+                  estimated_resale_value_minor: v.estimated_resale_value_minor ?? null,
+                }}
+                trigger={
+                  <Button variant="ghost" size="icon" aria-label="Edit vehicle">
+                    <Pencil className="size-4" />
+                  </Button>
+                }
+              />
             </li>
           ))}
         </ul>
