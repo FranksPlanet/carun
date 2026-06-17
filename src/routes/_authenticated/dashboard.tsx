@@ -8,23 +8,23 @@ import { listRepairs } from "@/lib/repairs.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { useMemo, useState } from "react";
 import {
-  trackedKm,
-  totalLogged,
   consumptionPoints,
   averageConsumption,
   lifetimeBreakdown,
   costPerKmViews,
+  totalLogged,
   type ExpenseRow,
   type CostPerKmMode,
 } from "@/lib/calc";
-import { useCategories, type CategoryRow } from "@/lib/categories";
+import { useCategories, type CategoryRow, CategoryIcon } from "@/lib/categories";
 
-import { defaultSettings, formatDistance, formatConsumption, formatMoney } from "@/lib/format";
+import { defaultSettings, formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, ArrowRight, Fuel } from "lucide-react";
 import { t } from "@/lib/strings";
-import { VehiclePhoto } from "@/components/vehicle-photo";
+import { VehicleHero } from "@/components/vehicle-hero";
 import { CostPerKmWidget } from "@/components/cost-per-km-widget";
+import { StoryNarrative } from "@/components/story-narrative";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — RevTab" }] }),
@@ -100,23 +100,49 @@ function Dashboard() {
   const cpkMode: CostPerKmMode =
     ((profileQ.data as any)?.default_cost_per_km_mode as CostPerKmMode) ?? "with_depreciation";
 
-  const stats = useMemo(() => {
+  // Fuel aggregates (used by the story and the fuel widget)
+  const fuel = useMemo(() => {
+    const points = consumptionPoints(expenses);
+    let liters = 0;
+    let fuelAmount = 0;
+    for (const e of expenses) {
+      if (e.role === "fuel" && e.liters && e.liters > 0) {
+        liters += e.liters;
+        fuelAmount += e.amount_minor;
+      }
+    }
+    const pricePerLiterMinor = liters > 0 ? fuelAmount / liters : null;
+    const avg = averageConsumption(points);
+    const total = totalLogged(expenses);
+    const fuelSharePct = total > 0 ? (fuelAmount / total) * 100 : null;
     return {
-      km: trackedKm(expenses),
-      total: totalLogged(expenses),
-      avgCons: averageConsumption(consumptionPoints(expenses)),
+      liters,
+      fuelAmount,
+      pricePerLiterMinor,
+      avg,
+      fuelSharePct,
+      hasFuel: liters > 0,
     };
   }, [expenses]);
+
+  // Category breakdown by category_id (uses dynamic colours/icons)
+  const catBreakdown = useMemo(() => {
+    const sums = new Map<string, number>();
+    for (const e of expenses) sums.set(e.category_id, (sums.get(e.category_id) ?? 0) + e.amount_minor);
+    const items = categories
+      .map((c) => ({ c, amount: sums.get(c.id) ?? 0 }))
+      .filter((x) => x.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+    const max = items[0]?.amount ?? 0;
+    return { items, max };
+  }, [expenses, categories]);
 
   if (vehiclesQ.isLoading || profileQ.isLoading || !vehiclesQ.isSuccess) {
     return (
       <div className="space-y-4">
         <div className="aspect-video w-full rounded-2xl bg-muted animate-pulse" />
-        <div className="grid grid-cols-2 gap-3">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="kpi-card h-24 animate-pulse" />
-          ))}
-        </div>
+        <div className="h-24 rounded-2xl bg-muted animate-pulse" />
+        <div className="h-48 rounded-2xl bg-muted animate-pulse" />
       </div>
     );
   }
@@ -133,89 +159,193 @@ function Dashboard() {
     );
   }
 
+  const cardCurrency = vehicle?.currency ?? settings.currency;
+  const cardSettings = { ...settings, currency: cardCurrency };
 
   return (
     <div className="space-y-6">
-      {vehicles.length > 0 && (
+      {/* Vehicle switcher */}
+      {vehicles.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           {vehicles.map((v: any) => (
             <button
               key={v.id}
               onClick={() => setActiveVehicleId(v.id)}
-              className={`tag-chip ${v.id === vehicle?.id ? "" : ""}`}
+              className="tag-chip"
               data-on={v.id === vehicle?.id}
             >
               {v.name}
             </button>
           ))}
-          <Link to="/onboarding" className="tag-chip">+ Add</Link>
         </div>
       )}
 
+      {/* Car hero */}
       {vehicle && (
-        <div className="space-y-3">
-          <VehiclePhoto
-            vehicleId={vehicle.id}
-            photoPath={(vehicle as any).photo_path}
-            vehicleName={vehicle.name}
-          />
-          <div className="kpi-card kpi-hero">
-            <div className="flex items-baseline justify-between flex-wrap gap-2">
-              <div>
-                <div className="text-xl font-semibold">{vehicle.name}</div>
-                <div className="text-sm text-muted-foreground">
-                  {vehicle.plate ? `${vehicle.plate} · ` : ""}{cap(vehicle.fuel_type)}
-                </div>
+        <VehicleHero
+          vehicle={{
+            id: vehicle.id,
+            name: vehicle.name,
+            currency: vehicle.currency,
+            photo_path: (vehicle as any).photo_path ?? null,
+            estimated_resale_value_minor:
+              (vehicle as any).estimated_resale_value_minor ?? null,
+          }}
+        />
+      )}
+
+      {/* Your story */}
+      {vehicle && cpkViews && (
+        <StoryNarrative
+          vehicleId={vehicle.id}
+          lifetimeKm={cpkViews.lifetime_km}
+          costPerKmMinor={pickCostPerKm(cpkViews, cpkMode)}
+          totalLiters={fuel.liters}
+          pricePerLiterMinor={fuel.pricePerLiterMinor}
+          avgConsumptionLPer100Km={fuel.avg}
+          fuelSharePct={fuel.fuelSharePct}
+          settings={cardSettings}
+          hasAnyExpense={expenses.length > 0}
+        />
+      )}
+
+      {/* Connected "this car" group */}
+      {vehicle && cpkViews && (
+        <section className="kpi-card kpi-hero p-0 overflow-hidden">
+          <div className="p-4 sm:p-5">
+            <CostPerKmWidget
+              views={cpkViews}
+              mode={cpkMode}
+              settings={cardSettings}
+              bare
+            />
+
+            {/* Category breakdown */}
+            {catBreakdown.items.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="kpi-label mb-2">Where it goes</div>
+                <ul className="space-y-2">
+                  {catBreakdown.items.slice(0, 6).map(({ c, amount }) => {
+                    const pct = catBreakdown.max > 0 ? (amount / catBreakdown.max) * 100 : 0;
+                    return (
+                      <li key={c.id} className="flex items-center gap-3">
+                        <CategoryIcon category={c} className="size-4 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-sm truncate">{c.name}</span>
+                            <span className="text-xs num text-muted-foreground">
+                              {formatMoney(amount, cardSettings)}
+                            </span>
+                          </div>
+                          <div
+                            className="mt-1 h-1.5 rounded-full overflow-hidden"
+                            style={{ background: "color-mix(in oklab, var(--color-foreground) 6%, transparent)" }}
+                          >
+                            <div
+                              className="h-full rounded-full"
+                              style={{ width: `${pct}%`, background: c.color }}
+                            />
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
+            )}
+
+            <div className="mt-4 flex justify-end">
+              <Link to="/expenses">
+                <Button variant="ghost" size="sm" className="rounded-full">
+                  View expenses <ArrowRight className="size-4 ml-1" />
+                </Button>
+              </Link>
             </div>
           </div>
-        </div>
+
+          {/* Fuel widget */}
+          <div
+            className="p-4 sm:p-5 border-t border-border"
+            style={{ background: "color-mix(in oklab, var(--color-sand) 50%, var(--color-card))" }}
+          >
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <Fuel className="size-4" style={{ color: "var(--color-primary)" }} />
+                <div className="kpi-label">Fuel</div>
+              </div>
+              <Link to="/insights">
+                <Button variant="ghost" size="sm" className="rounded-full">
+                  View insights <ArrowRight className="size-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
+
+            {fuel.hasFuel ? (
+              <div className="grid grid-cols-2 gap-3">
+                <FuelStat
+                  label="Total fuel"
+                  value={`${Math.round(fuel.liters).toLocaleString("cs-CZ")} l`}
+                />
+                <FuelStat
+                  label="Avg price"
+                  value={
+                    fuel.pricePerLiterMinor != null
+                      ? formatPricePerLiterLocal(fuel.pricePerLiterMinor, cardSettings.currency)
+                      : "—"
+                  }
+                />
+                <FuelStat
+                  label="Consumption"
+                  value={fuel.avg != null ? `${fuel.avg.toFixed(2)} l/100km` : "—"}
+                />
+                <FuelStat
+                  label="Share of cost"
+                  value={fuel.fuelSharePct != null ? `${fuel.fuelSharePct.toFixed(0)}%` : "—"}
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Log a fuel fill-up to see your consumption and share of cost.
+              </p>
+            )}
+          </div>
+        </section>
       )}
 
-
-      <div className="grid grid-cols-2 gap-3">
-        {cpkViews && (
-          <CostPerKmWidget
-            views={cpkViews}
-            mode={cpkMode}
-            settings={{ ...settings, currency: vehicle?.currency ?? settings.currency }}
-          />
-        )}
-        <div className="kpi-card">
-          <div className="kpi-label">{t.kpi.avgConsumption}</div>
-          <div className="kpi-value num">{formatConsumption(stats.avgCons, settings)}</div>
-        </div>
-        <div className="kpi-card kpi-tile-sand">
-          <div className="kpi-label">Current odometer</div>
-          <div className="kpi-value num">{formatDistance(vehicle?.current_odometer_km ?? 0, settings)}</div>
-        </div>
-        <div className="kpi-card kpi-tile-sand">
-          <div className="kpi-label">{t.kpi.loggedTotal}</div>
-          <div className="kpi-value num">{formatMoney(stats.total, { ...settings, currency: vehicle?.currency ?? settings.currency })}</div>
-        </div>
+      {/* Add another car — extra bottom padding so the fixed Add-expense
+          button never clashes with it. */}
+      <div className="pt-2 pb-4 flex justify-center">
+        <Link to="/onboarding">
+          <Button variant="outline" className="rounded-full">
+            <Plus className="size-4 mr-1" /> Add another car
+          </Button>
+        </Link>
       </div>
-
-      {expenses.length === 0 ? (
-        <div className="kpi-card text-center py-8">
-          <p className="text-muted-foreground">{t.empty.noExpenses}</p>
-          <Link to="/expenses" className="inline-block mt-3">
-            <Button className="rounded-full"><Plus className="size-4 mr-1" /> Add expense</Button>
-          </Link>
-        </div>
-      ) : (
-        <div className="kpi-card">
-          <div className="text-sm font-semibold mb-1">Insights</div>
-          <p className="text-sm text-muted-foreground">
-            Projections, lifetime cost estimates and consumption trends live in{" "}
-            <Link to="/insights" className="underline text-foreground">Insights</Link>.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
 
-function cap(s: string): string {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+function pickCostPerKm(
+  views: { operating_minor_per_km: number; with_depreciation_minor_per_km: number | null; with_full_purchase_minor_per_km: number },
+  mode: CostPerKmMode,
+): number | null {
+  if (mode === "operating") return views.operating_minor_per_km;
+  if (mode === "with_full_purchase") return views.with_full_purchase_minor_per_km;
+  // depreciation falls back to operating if no resale set
+  return views.with_depreciation_minor_per_km ?? views.operating_minor_per_km;
 }
 
+function FuelStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className="text-base font-semibold num mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+function formatPricePerLiterLocal(minorPerLiter: number, currency: string): string {
+  const symbols: Record<string, string> = { CZK: "Kč", EUR: "€", USD: "$", GBP: "£" };
+  const major = minorPerLiter / 100;
+  return `${major.toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${symbols[currency] ?? currency}/l`;
+}
