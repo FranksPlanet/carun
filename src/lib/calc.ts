@@ -1,11 +1,16 @@
 // Pure calculation engine. Inputs are canonical: amounts in minor currency
 // units, distances in km, volumes in liters.
 
+export type CategoryRole = "fuel" | "routine" | "repair" | "admin" | "other";
+
 export type ExpenseRow = {
   id: string;
   date: string;
   odometer_km: number;
-  category: "fuel" | "service" | "admin" | "other";
+  category_id: string;
+  // Role of the referenced category — joined in by the loader. Analytics
+  // identify fuel expenses by `role === 'fuel'`, never by name.
+  role: CategoryRole;
   amount_minor: number;
   liters: number | null;
   full_tank: boolean | null;
@@ -48,9 +53,9 @@ export function trackedKm(expenses: ExpenseRow[]): number {
   return Math.max(0, hi - lo);
 }
 
-export function totalsByCategory(expenses: ExpenseRow[]): Record<string, number> {
-  const out: Record<string, number> = { fuel: 0, service: 0, admin: 0, other: 0 };
-  for (const e of expenses) out[e.category] = (out[e.category] ?? 0) + e.amount_minor;
+export function totalsByCategory(expenses: ExpenseRow[]): Record<CategoryRole, number> {
+  const out: Record<CategoryRole, number> = { fuel: 0, routine: 0, repair: 0, admin: 0, other: 0 };
+  for (const e of expenses) out[e.role] = (out[e.role] ?? 0) + e.amount_minor;
   return out;
 }
 
@@ -64,11 +69,11 @@ export function costPerKm(expenses: ExpenseRow[]): number {
   return totalLogged(expenses) / km;
 }
 
-export function categoryCostPerKm(expenses: ExpenseRow[]): Record<string, number> {
+export function categoryCostPerKm(expenses: ExpenseRow[]): Record<CategoryRole, number> {
   const km = trackedKm(expenses);
   const by = totalsByCategory(expenses);
-  const out: Record<string, number> = {};
-  for (const k of Object.keys(by)) out[k] = km > 0 ? by[k] / km : 0;
+  const out: Record<CategoryRole, number> = { fuel: 0, routine: 0, repair: 0, admin: 0, other: 0 };
+  (Object.keys(by) as CategoryRole[]).forEach((k) => (out[k] = km > 0 ? by[k] / km : 0));
   return out;
 }
 
@@ -87,7 +92,7 @@ export type ConsumptionPoint = {
 
 export function consumptionPoints(expenses: ExpenseRow[]): ConsumptionPoint[] {
   const fuels = expenses
-    .filter((e) => e.category === "fuel" && e.liters && e.liters > 0)
+    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
     .sort((a, b) => a.odometer_km - b.odometer_km);
   const points: ConsumptionPoint[] = [];
   let lastFullIdx = -1;
@@ -144,7 +149,7 @@ export function averageConsumption(points: ConsumptionPoint[]): number | null {
 
 export function pricePerLiterSeries(expenses: ExpenseRow[]): { date: string; price: number }[] {
   return expenses
-    .filter((e) => e.category === "fuel" && e.liters && e.liters > 0)
+    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((e) => ({ date: e.date, price: e.amount_minor / (e.liters as number) }));
 }
@@ -345,7 +350,10 @@ export function defaultMaintenancePerKm(expenses: ExpenseRow[]): number {
   const km = trackedKm(expenses);
   if (km <= 0) return 0;
   const by = totalsByCategory(expenses);
-  return ((by.service ?? 0) + (by.other ?? 0)) / km;
+  // Maintenance projection seed: routine wear + unexpected repairs. Excludes
+  // fuel (priced separately), admin (recurring/time-based), and other
+  // (discretionary spend like Tuning shouldn't lift the baseline).
+  return ((by.repair ?? 0) + (by.routine ?? 0)) / km;
 }
 
 export function defaultAnnualKm(expenses: ExpenseRow[]): number {
@@ -360,7 +368,7 @@ export function defaultAnnualKm(expenses: ExpenseRow[]): number {
 
 export function defaultFuelPriceMinor(expenses: ExpenseRow[]): number {
   const fuels = expenses
-    .filter((e) => e.category === "fuel" && e.liters && e.liters > 0)
+    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
     .sort((a, b) => b.date.localeCompare(a.date));
   if (fuels.length === 0) return 0;
   return Math.round(fuels[0].amount_minor / (fuels[0].liters as number));

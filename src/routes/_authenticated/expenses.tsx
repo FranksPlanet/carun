@@ -2,7 +2,14 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CATEGORIES, CATEGORY_META, CategoryIcon } from "@/lib/categories";
+import {
+  CategoryIcon,
+  useCategories,
+  categoryById,
+  defaultForRole,
+  findCategoryByName,
+  type CategoryRow,
+} from "@/lib/categories";
 import { listVehicles } from "@/lib/vehicles.functions";
 import {
   listExpenses,
@@ -13,7 +20,6 @@ import {
 import { getProfile } from "@/lib/profile.functions";
 import {
   consumptionPoints,
-  totalsByCategory,
   totalLogged,
   cumulativeSpend,
   CONTEXT_TAGS,
@@ -72,13 +78,11 @@ export const Route = createFileRoute("/_authenticated/expenses")({
   component: ExpensesPage,
 });
 
-type Category = "fuel" | "service" | "admin" | "other";
-
 type FormState = {
   id?: string;
   date: string;
   odometer: string;
-  category: Category;
+  category_id: string;
   amount: string;
   liters: string;
   full_tank: boolean;
@@ -86,10 +90,10 @@ type FormState = {
   note: string;
 };
 
-const emptyForm = (): FormState => ({
+const emptyForm = (categoryId: string): FormState => ({
   date: new Date().toISOString().slice(0, 10),
   odometer: "",
-  category: "fuel",
+  category_id: categoryId,
   amount: "",
   liters: "",
   full_tank: true,
@@ -109,6 +113,8 @@ function ExpensesPage() {
 
   const profileQ = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
   const vehiclesQ = useQuery({ queryKey: ["vehicles"], queryFn: () => fetchVehicles() });
+  const categoriesQ = useCategories();
+  const categories: CategoryRow[] = categoriesQ.data ?? [];
   const vehicles = vehiclesQ.data ?? [];
   const [activeVehicleId, setActiveVehicleId] = useState<string | null>(null);
   const vehicle = vehicles.find((v: any) => v.id === activeVehicleId) ?? vehicles[0];
@@ -122,10 +128,14 @@ function ExpensesPage() {
   const settings = profileQ.data ?? defaultSettings;
   const currency = vehicle?.currency ?? settings.currency;
   const moneySettings = { ...settings, currency };
-  const expenses = (expensesQ.data ?? []) as ExpenseRow[];
+  const expenses = (expensesQ.data ?? []) as unknown as ExpenseRow[];
+
+  const fuelDefault = defaultForRole(categories, "fuel");
+  const otherDefault = defaultForRole(categories, "other") ?? categories[0];
 
   const stats = useMemo(() => {
-    const by = totalsByCategory(expenses);
+    const by: Record<string, number> = {};
+    for (const e of expenses) by[e.category_id] = (by[e.category_id] ?? 0) + e.amount_minor;
     return {
       total: totalLogged(expenses),
       by,
@@ -136,24 +146,25 @@ function ExpensesPage() {
     };
   }, [expenses, currency]);
 
+  // Cumulative spend stacked by category — keys are category ids so colours
+  // and labels follow whatever the user has defined.
   const stackedCum = useMemo(() => {
+    if (categories.length === 0) return [];
     const sorted = [...expenses].sort((a, b) =>
       a.date === b.date ? a.odometer_km - b.odometer_km : a.date < b.date ? -1 : 1,
     );
-    const running: Record<Category, number> = { fuel: 0, service: 0, admin: 0, other: 0 };
+    const running: Record<string, number> = {};
+    for (const c of categories) running[c.id] = 0;
     const byDate = new Map<string, any>();
     for (const e of sorted) {
-      running[e.category as Category] += e.amount_minor;
-      byDate.set(e.date, {
-        date: e.date,
-        fuel: moneyMinorToMajor(running.fuel, currency),
-        service: moneyMinorToMajor(running.service, currency),
-        admin: moneyMinorToMajor(running.admin, currency),
-        other: moneyMinorToMajor(running.other, currency),
-      });
+      if (running[e.category_id] == null) running[e.category_id] = 0;
+      running[e.category_id] += e.amount_minor;
+      const row: any = { date: e.date };
+      for (const c of categories) row[c.id] = moneyMinorToMajor(running[c.id] ?? 0, currency);
+      byDate.set(e.date, row);
     }
     return Array.from(byDate.values());
-  }, [expenses, currency]);
+  }, [expenses, currency, categories]);
 
   const consPointsByOdo = useMemo(() => {
     const m = new Map<number, number>();
@@ -162,11 +173,14 @@ function ExpensesPage() {
   }, [expenses]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState<FormState>(emptyForm());
+  const [form, setForm] = useState<FormState>(() => emptyForm(""));
   const [importOpen, setImportOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const scanRef = useRef<HTMLInputElement>(null);
   const scanFn = useServerFn(scanReceipt);
+
+  const selectedCategory = categoryById(categories, form.category_id);
+  const selectedIsFuel = selectedCategory?.role === "fuel";
 
   async function handleScan(file: File) {
     if (!vehicle) return;
@@ -185,12 +199,15 @@ function ExpensesPage() {
       const res = await scanFn({
         data: { image_base64: base64, mime_type: file.type || "image/jpeg" },
       });
-      const cat = (res.category ?? "fuel") as Category;
+      // Map OCR's free-text guess to one of the user's categories, never auto-create.
+      const guess =
+        (res.category && findCategoryByName(categories, res.category)) ||
+        (res.liters != null ? fuelDefault : null) ||
+        otherDefault;
       setForm({
-        ...emptyForm(),
+        ...emptyForm(guess?.id ?? ""),
         odometer: vehicle.current_odometer_km ? String(vehicle.current_odometer_km) : "",
         date: res.date || new Date().toISOString().slice(0, 10),
-        category: cat,
         amount: res.total != null ? String(res.total) : "",
         liters: res.liters != null ? String(res.liters) : "",
         note: res.station ?? "",
@@ -204,7 +221,7 @@ function ExpensesPage() {
     } catch (e: any) {
       toast.error(e?.message ?? "Couldn't scan receipt");
       setForm({
-        ...emptyForm(),
+        ...emptyForm(otherDefault?.id ?? ""),
         odometer: vehicle.current_odometer_km ? String(vehicle.current_odometer_km) : "",
       });
       setDialogOpen(true);
@@ -217,17 +234,18 @@ function ExpensesPage() {
     mutationFn: async (f: FormState) => {
       const amount_minor = moneyMajorToMinor(parseLocalNumber(f.amount), currency);
       const odometer_km = Math.round(parseLocalNumber(f.odometer));
-      const liters = f.category === "fuel" && f.liters ? parseLocalNumber(f.liters) : null;
+      const isFuel = categoryById(categories, f.category_id)?.role === "fuel";
+      const liters = isFuel && f.liters ? parseLocalNumber(f.liters) : null;
       const payload = {
         vehicle_id: vehicle!.id,
         date: f.date,
         odometer_km,
-        category: f.category,
+        category_id: f.category_id,
         amount_minor,
         currency,
         liters,
-        full_tank: f.category === "fuel" ? f.full_tank : null,
-        tags: f.category === "fuel" ? f.tags : [],
+        full_tank: isFuel ? f.full_tank : null,
+        tags: isFuel ? f.tags : [],
         note: f.note || null,
       };
       if (f.id) {
@@ -254,7 +272,7 @@ function ExpensesPage() {
 
   function openAdd() {
     setForm({
-      ...emptyForm(),
+      ...emptyForm(fuelDefault?.id ?? otherDefault?.id ?? ""),
       odometer: vehicle?.current_odometer_km ? String(vehicle.current_odometer_km) : "",
     });
     setDialogOpen(true);
@@ -263,24 +281,29 @@ function ExpensesPage() {
   // FAB / nav trigger to open add dialog
   useEffect(() => {
     function handler() {
-      if (!vehicle) return;
+      if (!vehicle || categories.length === 0) return;
       openAdd();
     }
     window.addEventListener("revtab:add-expense", handler);
-    if (typeof window !== "undefined" && window.location.hash === "#add" && vehicle) {
+    if (
+      typeof window !== "undefined" &&
+      window.location.hash === "#add" &&
+      vehicle &&
+      categories.length > 0
+    ) {
       openAdd();
       history.replaceState(null, "", window.location.pathname);
     }
     return () => window.removeEventListener("revtab:add-expense", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vehicle?.id]);
+  }, [vehicle?.id, categories.length]);
 
   function openEdit(e: ExpenseRow) {
     setForm({
       id: e.id,
       date: e.date,
       odometer: String(e.odometer_km),
-      category: e.category,
+      category_id: e.category_id,
       amount: String(moneyMinorToMajor(e.amount_minor, currency)),
       liters: e.liters != null ? String(e.liters) : "",
       full_tank: !!e.full_tank,
@@ -305,7 +328,7 @@ function ExpensesPage() {
     const rows = expenses.map((e) => [
       e.date,
       e.odometer_km,
-      e.category,
+      categoryById(categories, e.category_id)?.name ?? "",
       moneyMinorToMajor(e.amount_minor, currency).toFixed(2),
       currency,
       e.liters ?? "",
@@ -334,7 +357,7 @@ function ExpensesPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (vehiclesQ.isLoading) {
+  if (vehiclesQ.isLoading || categoriesQ.isLoading) {
     return (
       <div className="space-y-3">
         <div className="h-8 w-40 bg-muted rounded animate-pulse" />
@@ -358,25 +381,22 @@ function ExpensesPage() {
   const amountNum = parseLocalNumber(form.amount);
   const litersNum = parseLocalNumber(form.liters);
   const pricePerLiter =
-    form.category === "fuel" && isFinite(amountNum) && isFinite(litersNum) && litersNum > 0
+    selectedIsFuel && isFinite(amountNum) && isFinite(litersNum) && litersNum > 0
       ? amountNum / litersNum
       : null;
 
-  const catLabels: Record<Category, string> = {
-    fuel: CATEGORY_META.fuel.label,
-    service: CATEGORY_META.service.label,
-    admin: CATEGORY_META.admin.label,
-    other: CATEGORY_META.other.label,
-  };
-
-  const donutData = CATEGORIES.map((c) => ({
-    name: catLabels[c],
-    cat: c,
-    value: moneyMinorToMajor(stats.by[c] ?? 0, currency),
-    minor: stats.by[c] ?? 0,
-    color: CATEGORY_META[c].color,
-  })).filter((d) => d.value > 0);
+  const donutData = categories
+    .map((c) => ({
+      id: c.id,
+      cat: c,
+      name: c.name,
+      value: moneyMinorToMajor(stats.by[c.id] ?? 0, currency),
+      minor: stats.by[c.id] ?? 0,
+      color: c.color,
+    }))
+    .filter((d) => d.value > 0);
   const totalMajor = donutData.reduce((s, d) => s + d.value, 0);
+  const categoriesWithSpend = categories.filter((c) => (stats.by[c.id] ?? 0) > 0);
 
   return (
     <div className="space-y-6">
@@ -464,7 +484,7 @@ function ExpensesPage() {
                       strokeWidth={2}
                     >
                       {donutData.map((d) => (
-                        <Cell key={d.cat} fill={d.color} />
+                        <Cell key={d.id} fill={d.color} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -492,7 +512,7 @@ function ExpensesPage() {
                 {donutData.map((d) => {
                   const pct = totalMajor > 0 ? (d.value / totalMajor) * 100 : 0;
                   return (
-                    <li key={d.cat} className="flex items-center gap-3">
+                    <li key={d.id} className="flex items-center gap-3">
                       <CategoryIcon category={d.cat} className="size-4 shrink-0" />
                       <span className="flex-1 truncate">{d.name}</span>
                       <span className="text-muted-foreground tabular-nums text-xs w-10 text-right">
@@ -524,10 +544,10 @@ function ExpensesPage() {
               <ResponsiveContainer>
                 <AreaChart data={stackedCum} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <defs>
-                    {CATEGORIES.map((c) => (
-                      <linearGradient key={c} id={`exp-${c}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={CATEGORY_META[c].color} stopOpacity={0.85} />
-                        <stop offset="100%" stopColor={CATEGORY_META[c].color} stopOpacity={0.55} />
+                    {categories.map((c) => (
+                      <linearGradient key={c.id} id={`exp-${c.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={c.color} stopOpacity={0.85} />
+                        <stop offset="100%" stopColor={c.color} stopOpacity={0.55} />
                       </linearGradient>
                     ))}
                   </defs>
@@ -563,18 +583,18 @@ function ExpensesPage() {
                     }}
                     formatter={(v: any, name: any) => [
                       formatMoney(Math.round(Number(v) * 100), moneySettings),
-                      catLabels[name as Category] ?? name,
+                      categoryById(categories, name as string)?.name ?? name,
                     ]}
                   />
-                  {CATEGORIES.map((c) => (
+                  {categories.map((c) => (
                     <Area
-                      key={c}
+                      key={c.id}
                       type="monotone"
-                      dataKey={c}
+                      dataKey={c.id}
                       stackId="1"
-                      stroke={CATEGORY_META[c].color}
+                      stroke={c.color}
                       strokeWidth={1}
-                      fill={`url(#exp-${c})`}
+                      fill={`url(#exp-${c.id})`}
                     />
                   ))}
                 </AreaChart>
@@ -583,17 +603,17 @@ function ExpensesPage() {
           </div>
           {stackedCum.length > 0 && (
             <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs">
-              {CATEGORIES.filter((c) => (stats.by[c] ?? 0) > 0).map((c) => (
-                <li key={c} className="flex items-center gap-1.5">
+              {categoriesWithSpend.map((c) => (
+                <li key={c.id} className="flex items-center gap-1.5">
                   <span
                     className="size-2.5 rounded-sm"
-                    style={{ backgroundColor: CATEGORY_META[c].color }}
+                    style={{ backgroundColor: c.color }}
                     aria-hidden
                   />
                   <CategoryIcon category={c} className="size-3.5" />
-                  <span className="text-muted-foreground">{catLabels[c]}</span>
+                  <span className="text-muted-foreground">{c.name}</span>
                   <span className="num tabular-nums font-medium">
-                    {formatMoney(stats.by[c] ?? 0, moneySettings)}
+                    {formatMoney(stats.by[c.id] ?? 0, moneySettings)}
                   </span>
                 </li>
               ))}
@@ -627,26 +647,29 @@ function ExpensesPage() {
         ) : (
           <ul className="divide-y divide-border">
             {expenses.map((e) => {
-              const cons = e.category === "fuel" ? consPointsByOdo.get(e.odometer_km) ?? null : null;
+              const cat = categoryById(categories, e.category_id);
+              const isFuel = cat?.role === "fuel";
+              const cons = isFuel ? consPointsByOdo.get(e.odometer_km) ?? null : null;
+              const fallbackColor = cat?.color ?? "var(--color-muted)";
               return (
                 <li key={e.id} className="py-3 grid grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-x-3 gap-y-1">
                   <div
                     className="size-9 shrink-0 rounded-full grid place-items-center"
                     style={{
-                      backgroundColor: `color-mix(in oklab, ${CATEGORY_META[e.category].color} 18%, var(--color-card))`,
+                      backgroundColor: `color-mix(in oklab, ${fallbackColor} 18%, var(--color-card))`,
                     }}
                   >
-                    <CategoryIcon category={e.category} className="size-4" />
+                    <CategoryIcon category={cat ?? null} className="size-4" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="text-sm font-semibold">{catLabels[e.category]}</span>
+                      <span className="text-sm font-semibold">{cat?.name ?? "Uncategorised"}</span>
                       <span className="text-xs text-muted-foreground">{formatDate(e.date, settings)}</span>
                       <span className="text-xs text-muted-foreground">
                         · {formatDistance(e.odometer_km, settings)}
                       </span>
                     </div>
-                    {e.category === "fuel" && e.liters != null && (
+                    {isFuel && e.liters != null && (
                       <div className="text-xs text-muted-foreground">
                         {formatVolume(e.liters, settings)}
                         {cons != null ? ` · ${formatConsumption(cons, settings)}` : ""}
@@ -714,19 +737,33 @@ function ExpensesPage() {
             <div>
               <Label>Category</Label>
               <Select
-                value={form.category}
-                onValueChange={(v) => setForm({ ...form, category: v as Category })}
+                value={form.category_id}
+                onValueChange={(v) => setForm({ ...form, category_id: v })}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Pick a category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="fuel">Fuel</SelectItem>
-                  <SelectItem value="service">Service</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <span className="inline-flex items-center gap-2">
+                        <CategoryIcon category={c} className="size-4" />
+                        <span>{c.name}</span>
+                        {c.description && (
+                          <span className="text-xs text-muted-foreground hidden sm:inline">
+                            — {c.description}
+                          </span>
+                        )}
+                      </span>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {selectedCategory?.description && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {selectedCategory.description}
+                </p>
+              )}
             </div>
 
             <div>
@@ -739,7 +776,7 @@ function ExpensesPage() {
               />
             </div>
 
-            {form.category === "fuel" && (
+            {selectedIsFuel && (
               <>
                 <div>
                   <Label htmlFor="lt">Liters</Label>
@@ -807,9 +844,10 @@ function ExpensesPage() {
             const lt = parseLocalNumber(form.liters);
             const invalid =
               !form.date ||
+              !form.category_id ||
               !(isFinite(odo) && odo >= 0) ||
               !(isFinite(amt) && amt > 0) ||
-              (form.category === "fuel" && !(isFinite(lt) && lt > 0));
+              (selectedIsFuel && !(isFinite(lt) && lt > 0));
             return (
               <DialogFooter>
                 <Button variant="ghost" onClick={() => setDialogOpen(false)}>
