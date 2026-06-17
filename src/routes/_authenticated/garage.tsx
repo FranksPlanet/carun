@@ -4,9 +4,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { listVehicles } from "@/lib/vehicles.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { Button } from "@/components/ui/button";
-import { Plus, Car } from "lucide-react";
+import { Plus, Car, Pencil } from "lucide-react";
 import { t } from "@/lib/strings";
-import { defaultSettings, formatDistance } from "@/lib/format";
+import { defaultSettings, formatDistance, formatMoney } from "@/lib/format";
+import { VehicleEditDialog } from "@/components/vehicle-edit-dialog";
 
 export const Route = createFileRoute("/_authenticated/garage")({
   head: () => ({ meta: [{ title: "Garage — RevTab" }] }),
