@@ -11,7 +11,10 @@ import {
   totalLogged,
   consumptionPoints,
   averageConsumption,
+  type ExpenseRow,
 } from "@/lib/calc";
+import { useCategories, type CategoryRow } from "@/lib/categories";
+
 import { defaultSettings, formatCostPerKm, formatDistance, formatConsumption, formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
