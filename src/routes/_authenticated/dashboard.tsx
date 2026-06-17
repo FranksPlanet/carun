@@ -3,23 +3,28 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listVehicles } from "@/lib/vehicles.functions";
 import { listExpenses } from "@/lib/expenses.functions";
+import { listRecurring } from "@/lib/recurring.functions";
+import { listRepairs } from "@/lib/repairs.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { useMemo, useState } from "react";
 import {
-  costPerKm,
   trackedKm,
   totalLogged,
   consumptionPoints,
   averageConsumption,
+  lifetimeBreakdown,
+  costPerKmViews,
   type ExpenseRow,
+  type CostPerKmMode,
 } from "@/lib/calc";
 import { useCategories, type CategoryRow } from "@/lib/categories";
 
-import { defaultSettings, formatCostPerKm, formatDistance, formatConsumption, formatMoney } from "@/lib/format";
+import { defaultSettings, formatDistance, formatConsumption, formatMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { t } from "@/lib/strings";
 import { VehiclePhoto } from "@/components/vehicle-photo";
+import { CostPerKmWidget } from "@/components/cost-per-km-widget";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — RevTab" }] }),
