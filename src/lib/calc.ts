@@ -69,11 +69,11 @@ export function costPerKm(expenses: ExpenseRow[]): number {
   return totalLogged(expenses) / km;
 }
 
-export function categoryCostPerKm(expenses: ExpenseRow[]): Record<string, number> {
+export function categoryCostPerKm(expenses: ExpenseRow[]): Record<CategoryRole, number> {
   const km = trackedKm(expenses);
   const by = totalsByCategory(expenses);
-  const out: Record<string, number> = {};
-  for (const k of Object.keys(by)) out[k] = km > 0 ? by[k] / km : 0;
+  const out: Record<CategoryRole, number> = { fuel: 0, routine: 0, repair: 0, admin: 0, other: 0 };
+  (Object.keys(by) as CategoryRole[]).forEach((k) => (out[k] = km > 0 ? by[k] / km : 0));
   return out;
 }
 
