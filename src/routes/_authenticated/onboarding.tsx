@@ -128,6 +128,7 @@ function OnboardingPage() {
           purchase_price_minor: toMinor(purchasePrice),
           currency: currency.trim() || "CZK",
           current_odometer_km: toInt(currentOdo),
+          estimated_resale_value_minor: resaleValue.trim() ? toMinor(resaleValue) : null,
         },
       });
 
