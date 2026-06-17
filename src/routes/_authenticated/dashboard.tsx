@@ -48,25 +48,59 @@ function Dashboard() {
     queryFn: () => fetchExpenses({ data: { vehicle_id: vehicle!.id } }),
     enabled: !!vehicle,
   });
+  const recurringQ = useQuery({
+    queryKey: ["recurring", vehicle?.id],
+    queryFn: () => fetchRecurring({ data: { vehicle_id: vehicle!.id } }),
+    enabled: !!vehicle,
+  });
+  const repairsQ = useQuery({
+    queryKey: ["repairs", vehicle?.id],
+    queryFn: () => fetchRepairs({ data: { vehicle_id: vehicle!.id } }),
+    enabled: !!vehicle,
+  });
 
   const settings = profileQ.data ?? defaultSettings;
   const categoriesQ = useCategories();
   const categories: CategoryRow[] = categoriesQ.data ?? [];
-  // Map category role onto each row so calc.ts can identify fuel expenses.
   const expenses = useMemo<ExpenseRow[]>(() => {
     const raw = (expensesQ.data ?? []) as any[];
     const byId = new Map(categories.map((c: CategoryRow) => [c.id, c.role] as const));
     return raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
   }, [expensesQ.data, categories]);
 
+  const recurring = (recurringQ.data ?? []) as { amount_minor_per_year: number }[];
+  const repairs = (repairsQ.data ?? []) as { amount_minor: number }[];
 
+  const cpkViews = useMemo(() => {
+    if (!vehicle) return null;
+    const lt = lifetimeBreakdown(
+      {
+        purchase_date: vehicle.purchase_date,
+        purchase_odometer_km: vehicle.purchase_odometer_km,
+        purchase_price_minor: vehicle.purchase_price_minor,
+      },
+      expenses,
+      recurring,
+      repairs,
+    );
+    return costPerKmViews(
+      {
+        purchase_price_minor: vehicle.purchase_price_minor,
+        purchase_odometer_km: vehicle.purchase_odometer_km,
+        current_odometer_km: vehicle.current_odometer_km ?? 0,
+        estimated_resale_value_minor:
+          (vehicle as any).estimated_resale_value_minor ?? null,
+      },
+      lt.total_minor,
+    );
+  }, [vehicle, expenses, recurring, repairs]);
 
-
+  const cpkMode: CostPerKmMode =
+    ((profileQ.data as any)?.default_cost_per_km_mode as CostPerKmMode) ?? "with_depreciation";
 
   const stats = useMemo(() => {
     return {
       km: trackedKm(expenses),
-      cpk: costPerKm(expenses),
       total: totalLogged(expenses),
       avgCons: averageConsumption(consumptionPoints(expenses)),
     };
