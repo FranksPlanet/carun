@@ -44,8 +44,16 @@ function Dashboard() {
     enabled: !!vehicle,
   });
 
-  const settings = profileQ.data ?? defaultSettings;
-  const expenses = (expensesQ.data ?? []) as never[];
+  const categoriesQ = useCategories();
+  const categories: CategoryRow[] = categoriesQ.data ?? [];
+  // Map category role onto each row so calc.ts can identify fuel expenses.
+  const expenses = useMemo<ExpenseRow[]>(() => {
+    const raw = (expensesQ.data ?? []) as any[];
+    const byId = new Map(categories.map((c: CategoryRow) => [c.id, c.role] as const));
+    return raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
+  }, [expensesQ.data, categories]);
+
+
 
   const stats = useMemo(() => {
     return {
