@@ -1,11 +1,16 @@
 // Pure calculation engine. Inputs are canonical: amounts in minor currency
 // units, distances in km, volumes in liters.
 
+export type CategoryRole = "fuel" | "routine" | "repair" | "admin" | "other";
+
 export type ExpenseRow = {
   id: string;
   date: string;
   odometer_km: number;
-  category: "fuel" | "service" | "admin" | "other";
+  category_id: string;
+  // Role of the referenced category — joined in by the loader. Analytics
+  // identify fuel expenses by `role === 'fuel'`, never by name.
+  role: CategoryRole;
   amount_minor: number;
   liters: number | null;
   full_tank: boolean | null;
