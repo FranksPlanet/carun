@@ -88,6 +88,7 @@ function OnboardingPage() {
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
   const [purchaseOdo, setPurchaseOdo] = useState("0");
   const [purchasePrice, setPurchasePrice] = useState("0");
+  const [resaleValue, setResaleValue] = useState("");
   const [currency, setCurrency] = useState("CZK");
 
   // Step 3
