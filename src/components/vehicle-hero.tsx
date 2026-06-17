@@ -177,18 +177,12 @@ export function VehicleHero({ vehicle }: { vehicle: VehicleLike }) {
       </div>
 
       {/* Hidden trigger — controlled programmatically */}
-      <VehicleEditDialogController
-        open={editOpen}
-        onOpenChange={setEditOpen}
-        vehicle={vehicle}
-      />
+      <ResaleDialog open={editOpen} onOpenChange={setEditOpen} vehicle={vehicle} />
     </>
   );
 }
 
-// Small wrapper so we can open VehicleEditDialog from the dropdown without
-// asking the caller to render a separate trigger.
-function VehicleEditDialogController({
+function ResaleDialog({
   open,
   onOpenChange,
   vehicle,
@@ -197,29 +191,62 @@ function VehicleEditDialogController({
   onOpenChange: (next: boolean) => void;
   vehicle: VehicleLike;
 }) {
-  // VehicleEditDialog manages its own open state via its trigger. We render an
-  // invisible trigger and click it imperatively when `open` flips to true.
-  const triggerRef = useRef<HTMLButtonElement>(null);
+  const update = useServerFn(updateVehicle);
+  const qc = useQueryClient();
+  const initial =
+    vehicle.estimated_resale_value_minor != null
+      ? String(moneyMinorToMajor(vehicle.estimated_resale_value_minor, vehicle.currency))
+      : "";
+  const [resale, setResale] = useState(initial);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
-    if (open) triggerRef.current?.click();
-  }, [open]);
+    if (open) setResale(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, vehicle.id]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const trimmed = resale.trim();
+      const minor = trimmed
+        ? Math.max(0, Math.round(parseLocalNumber(trimmed) * 100))
+        : null;
+      await update({ data: { id: vehicle.id, estimated_resale_value_minor: minor } });
+      await qc.invalidateQueries({ queryKey: ["vehicles"] });
+      toast.success("Saved");
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <div className="hidden">
-      <VehicleEditDialog
-        vehicle={{
-          id: vehicle.id,
-          currency: vehicle.currency,
-          estimated_resale_value_minor: vehicle.estimated_resale_value_minor,
-        }}
-        trigger={
-          <button
-            ref={triggerRef}
-            type="button"
-            aria-hidden
-            onClick={() => onOpenChange(false)}
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit vehicle</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Label htmlFor="resale-hero">Estimated resale / current value ({vehicle.currency})</Label>
+          <Input
+            id="resale-hero"
+            inputMode="decimal"
+            value={resale}
+            onChange={(e) => setResale(e.target.value)}
+            placeholder="What you could sell it for today"
           />
-        }
-      />
-    </div>
+          <p className="text-xs text-muted-foreground">
+            Used for honest depreciation-based cost/km. Leave empty to skip the depreciation view.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
