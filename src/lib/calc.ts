@@ -53,9 +53,9 @@ export function trackedKm(expenses: ExpenseRow[]): number {
   return Math.max(0, hi - lo);
 }
 
-export function totalsByCategory(expenses: ExpenseRow[]): Record<string, number> {
-  const out: Record<string, number> = { fuel: 0, service: 0, admin: 0, other: 0 };
-  for (const e of expenses) out[e.category] = (out[e.category] ?? 0) + e.amount_minor;
+export function totalsByCategory(expenses: ExpenseRow[]): Record<CategoryRole, number> {
+  const out: Record<CategoryRole, number> = { fuel: 0, routine: 0, repair: 0, admin: 0, other: 0 };
+  for (const e of expenses) out[e.role] = (out[e.role] ?? 0) + e.amount_minor;
   return out;
 }
 
