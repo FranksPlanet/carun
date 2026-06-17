@@ -92,7 +92,7 @@ export type ConsumptionPoint = {
 
 export function consumptionPoints(expenses: ExpenseRow[]): ConsumptionPoint[] {
   const fuels = expenses
-    .filter((e) => e.category === "fuel" && e.liters && e.liters > 0)
+    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
     .sort((a, b) => a.odometer_km - b.odometer_km);
   const points: ConsumptionPoint[] = [];
   let lastFullIdx = -1;
@@ -149,7 +149,7 @@ export function averageConsumption(points: ConsumptionPoint[]): number | null {
 
 export function pricePerLiterSeries(expenses: ExpenseRow[]): { date: string; price: number }[] {
   return expenses
-    .filter((e) => e.category === "fuel" && e.liters && e.liters > 0)
+    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((e) => ({ date: e.date, price: e.amount_minor / (e.liters as number) }));
 }
@@ -365,7 +365,7 @@ export function defaultAnnualKm(expenses: ExpenseRow[]): number {
 
 export function defaultFuelPriceMinor(expenses: ExpenseRow[]): number {
   const fuels = expenses
-    .filter((e) => e.category === "fuel" && e.liters && e.liters > 0)
+    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
     .sort((a, b) => b.date.localeCompare(a.date));
   if (fuels.length === 0) return 0;
   return Math.round(fuels[0].amount_minor / (fuels[0].liters as number));
