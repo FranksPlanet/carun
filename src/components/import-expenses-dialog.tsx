@@ -194,21 +194,34 @@ export function ImportExpensesDialog({
         const date = normalizeDate(r[mapping.date]);
         const odo = Math.round(normalizeNumber(r[mapping.odometer]));
         const amt = normalizeNumber(r[mapping.amount]);
-        const cat = mapping.category ? normalizeCategory(r[mapping.category]) : "other";
+      if (cats.length === 0) {
+        throw new Error("Categories aren't loaded yet — please retry in a moment.");
+      }
+      for (const r of rows) {
+        const date = normalizeDate(r[mapping.date]);
+        const odo = Math.round(normalizeNumber(r[mapping.odometer]));
+        const amt = normalizeNumber(r[mapping.amount]);
         const lt = mapping.liters ? normalizeNumber(r[mapping.liters]) : null;
         const note = mapping.note ? String(r[mapping.note] ?? "").slice(0, 500) : null;
+        const hasLiters = lt != null && isFinite(lt) && lt > 0;
+        const fallback = hasLiters ? fuelDefault ?? routineDefault : routineDefault;
+        const cat = mapping.category
+          ? resolveCategory(cats, r[mapping.category], fallback)
+          : fallback;
         if (!date) { skipped.push("invalid date"); continue; }
         if (!isFinite(odo) || odo < 0) { skipped.push("invalid odometer"); continue; }
         if (!isFinite(amt) || amt <= 0) { skipped.push("invalid amount"); continue; }
+        if (!cat) { skipped.push("no category available"); continue; }
+        const isFuel = cat.role === "fuel";
         valid.push({
           vehicle_id: vehicleId,
           date,
           odometer_km: odo,
-          category: cat,
+          category_id: cat.id,
           amount_minor: moneyMajorToMinor(amt, currency),
           currency,
-          liters: cat === "fuel" && lt != null && isFinite(lt) && lt > 0 ? lt : null,
-          full_tank: cat === "fuel" ? true : null,
+          liters: isFuel && hasLiters ? lt : null,
+          full_tank: isFuel ? true : null,
           tags: [],
           note: note || null,
         });
