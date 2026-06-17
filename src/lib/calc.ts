@@ -111,6 +111,9 @@ export function costPerKmViews(
     with_depreciation_minor_per_km: dep,
     with_full_purchase_minor_per_km: full,
   };
+}
+
+
 
 export function categoryCostPerKm(expenses: ExpenseRow[]): Record<CategoryRole, number> {
   const km = trackedKm(expenses);
