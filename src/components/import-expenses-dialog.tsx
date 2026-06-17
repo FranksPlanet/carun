@@ -190,10 +190,6 @@ export function ImportExpensesDialog({
     mutationFn: async () => {
       const valid: any[] = [];
       const skipped: string[] = [];
-      for (const r of rows) {
-        const date = normalizeDate(r[mapping.date]);
-        const odo = Math.round(normalizeNumber(r[mapping.odometer]));
-        const amt = normalizeNumber(r[mapping.amount]);
       if (cats.length === 0) {
         throw new Error("Categories aren't loaded yet — please retry in a moment.");
       }
