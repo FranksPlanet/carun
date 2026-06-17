@@ -30,6 +30,7 @@ const UpdateProfileSchema = z.object({
   volume_unit: z.enum(["l", "gal"]).optional(),
   consumption_style: z.enum(["l_per_100km", "km_per_l", "mpg"]).optional(),
   locale: z.string().min(1).max(8).optional(),
+  default_cost_per_km_mode: z.enum(["operating", "with_depreciation", "with_full_purchase"]).optional(),
 });
 
 export const updateProfile = createServerFn({ method: "POST" })

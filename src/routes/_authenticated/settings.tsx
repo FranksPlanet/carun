@@ -1,15 +1,24 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Settings as SettingsIcon, Download, Trash2, Tag } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Settings as SettingsIcon, Download, Trash2, Tag, Gauge } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { exportAllData, deleteAccountAndAllData } from "@/lib/account.functions";
+import { getProfile, updateProfile } from "@/lib/profile.functions";
 import { CategoriesManager } from "@/components/categories-manager";
 import { t } from "@/lib/strings";
+import type { CostPerKmMode } from "@/lib/calc";
+
+const CPK_MODES: { id: CostPerKmMode; label: string; hint: string }[] = [
+  { id: "operating", label: "Operating only", hint: "Everything except the car's capital cost" },
+  { id: "with_depreciation", label: "Incl. depreciation", hint: "Honest cost of owning it so far" },
+  { id: "with_full_purchase", label: "Incl. full purchase price", hint: "Gross figure incl. the whole sticker" },
+];
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — RevTab" }] }),
@@ -20,6 +29,25 @@ function SettingsPage() {
   const navigate = useNavigate();
   const exportFn = useServerFn(exportAllData);
   const deleteFn = useServerFn(deleteAccountAndAllData);
+  const fetchProfile = useServerFn(getProfile);
+  const update = useServerFn(updateProfile);
+  const qc = useQueryClient();
+  const profileQ = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
+  const cpkMode: CostPerKmMode =
+    ((profileQ.data as any)?.default_cost_per_km_mode as CostPerKmMode) ?? "with_depreciation";
+  const [savingMode, setSavingMode] = useState<CostPerKmMode | null>(null);
+
+  async function setCpkMode(next: CostPerKmMode) {
+    setSavingMode(next);
+    try {
+      await update({ data: { default_cost_per_km_mode: next } });
+      await qc.invalidateQueries({ queryKey: ["profile"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setSavingMode(null);
+    }
+  }
 
   const [exporting, setExporting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -67,6 +95,35 @@ function SettingsPage() {
       <h1 className="text-2xl font-semibold flex items-center gap-2">
         <SettingsIcon className="size-6" aria-hidden /> {t.nav.settings}
       </h1>
+
+      <section className="kpi-card space-y-3">
+        <h2 className="font-semibold flex items-center gap-2">
+          <Gauge className="size-4" aria-hidden /> Default cost-per-km view
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Choose which figure to feature on the dashboard. The other two stay visible underneath.
+        </p>
+        <div className="grid gap-2">
+          {CPK_MODES.map((m) => {
+            const active = m.id === cpkMode;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setCpkMode(m.id)}
+                disabled={savingMode != null || profileQ.isLoading}
+                className={`w-full text-left rounded-md border px-3 py-2 transition-colors ${
+                  active ? "border-primary bg-primary/5" : "border-border hover:bg-secondary"
+                }`}
+              >
+                <div className="text-sm font-medium">{m.label}</div>
+                <div className="text-xs text-muted-foreground">{m.hint}</div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
 
       <section className="kpi-card space-y-3">
         <h2 className="font-semibold flex items-center gap-2">

@@ -69,6 +69,52 @@ export function costPerKm(expenses: ExpenseRow[]): number {
   return totalLogged(expenses) / km;
 }
 
+export type CostPerKmMode = "operating" | "with_depreciation" | "with_full_purchase";
+export type CostPerKmViews = {
+  lifetime_km: number;
+  lifetime_total_minor: number;
+  purchase_price_minor: number;
+  estimated_resale_value_minor: number | null;
+  operating_minor_per_km: number;
+  with_depreciation_minor_per_km: number | null;
+  with_full_purchase_minor_per_km: number;
+};
+
+// Three reconciled cost-per-km views, all derived from the existing
+// lifetimeBreakdown total. Spread the car's capital cost over LIFETIME km
+// (purchase odometer → current odometer), not the tracked window, because
+// the car cost applies to every km driven.
+export function costPerKmViews(
+  vehicle: {
+    purchase_price_minor: number;
+    purchase_odometer_km: number;
+    current_odometer_km: number;
+    estimated_resale_value_minor: number | null;
+  },
+  lifetimeTotalMinor: number,
+): CostPerKmViews {
+  const K = Math.max(0, (vehicle.current_odometer_km ?? 0) - (vehicle.purchase_odometer_km ?? 0));
+  const P = vehicle.purchase_price_minor ?? 0;
+  const R = vehicle.estimated_resale_value_minor;
+  const operating = K > 0 ? (lifetimeTotalMinor - P) / K : 0;
+  const full = K > 0 ? lifetimeTotalMinor / K : 0;
+  const dep =
+    R == null || K <= 0
+      ? null
+      : ((lifetimeTotalMinor - P) + (P - R)) / K;
+  return {
+    lifetime_km: K,
+    lifetime_total_minor: lifetimeTotalMinor,
+    purchase_price_minor: P,
+    estimated_resale_value_minor: R,
+    operating_minor_per_km: operating,
+    with_depreciation_minor_per_km: dep,
+    with_full_purchase_minor_per_km: full,
+  };
+}
+
+
+
 export function categoryCostPerKm(expenses: ExpenseRow[]): Record<CategoryRole, number> {
   const km = trackedKm(expenses);
   const by = totalsByCategory(expenses);

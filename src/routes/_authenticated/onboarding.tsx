@@ -88,6 +88,7 @@ function OnboardingPage() {
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
   const [purchaseOdo, setPurchaseOdo] = useState("0");
   const [purchasePrice, setPurchasePrice] = useState("0");
+  const [resaleValue, setResaleValue] = useState("");
   const [currency, setCurrency] = useState("CZK");
 
   // Step 3
@@ -127,6 +128,7 @@ function OnboardingPage() {
           purchase_price_minor: toMinor(purchasePrice),
           currency: currency.trim() || "CZK",
           current_odometer_km: toInt(currentOdo),
+          estimated_resale_value_minor: resaleValue.trim() ? toMinor(resaleValue) : null,
         },
       });
 
@@ -215,8 +217,21 @@ function OnboardingPage() {
           <Field label="Currency">
             <Input value={currency} onChange={(e) => setCurrency(e.target.value)} />
           </Field>
+          <div className="sm:col-span-2 space-y-2">
+            <Label>Estimated resale / current value (optional)</Label>
+            <Input
+              inputMode="decimal"
+              value={resaleValue}
+              onChange={(e) => setResaleValue(e.target.value)}
+              placeholder="What you could sell it for today"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used for honest depreciation-based cost/km. Edit anytime. (Later: auto-suggest by make/model/age.)
+            </p>
+          </div>
         </div>
       )}
+
 
       {step === 3 && (
         <div className="space-y-3">
