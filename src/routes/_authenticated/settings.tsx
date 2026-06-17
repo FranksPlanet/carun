@@ -29,6 +29,25 @@ function SettingsPage() {
   const navigate = useNavigate();
   const exportFn = useServerFn(exportAllData);
   const deleteFn = useServerFn(deleteAccountAndAllData);
+  const fetchProfile = useServerFn(getProfile);
+  const update = useServerFn(updateProfile);
+  const qc = useQueryClient();
+  const profileQ = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
+  const cpkMode: CostPerKmMode =
+    ((profileQ.data as any)?.default_cost_per_km_mode as CostPerKmMode) ?? "with_depreciation";
+  const [savingMode, setSavingMode] = useState<CostPerKmMode | null>(null);
+
+  async function setCpkMode(next: CostPerKmMode) {
+    setSavingMode(next);
+    try {
+      await update({ data: { default_cost_per_km_mode: next } });
+      await qc.invalidateQueries({ queryKey: ["profile"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setSavingMode(null);
+    }
+  }
 
   const [exporting, setExporting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
