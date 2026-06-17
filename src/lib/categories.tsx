@@ -1,26 +1,129 @@
-import { Fuel, Wrench, Receipt, Tag, type LucideIcon } from "lucide-react";
+import {
+  Fuel,
+  Wrench,
+  Receipt,
+  Droplet,
+  Sparkles,
+  Tag,
+  Car,
+  ShieldCheck,
+  ParkingSquare,
+  CircleDashed,
+  Cog,
+  Gauge,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { listCategories } from "@/lib/categories.functions";
 
-export type Category = "fuel" | "service" | "admin" | "other";
+export type CategoryRole = "fuel" | "routine" | "repair" | "admin" | "other";
 
-export const CATEGORY_META: Record<
-  Category,
-  { label: string; color: string; icon: LucideIcon }
-> = {
-  fuel: { label: "Fuel", color: "#EF9F27", icon: Fuel },
-  service: { label: "Service", color: "#1D9E75", icon: Wrench },
-  admin: { label: "Admin", color: "#888780", icon: Receipt },
-  other: { label: "Other", color: "#7F77DD", icon: Tag },
+export type CategoryRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  color: string;
+  icon: string;
+  role: CategoryRole;
+  sort_order: number;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
-export const CATEGORIES: Category[] = ["fuel", "service", "admin", "other"];
+export const ROLE_META: Record<
+  CategoryRole,
+  { label: string; description: string }
+> = {
+  fuel: { label: "Fuel", description: "Fuel fill-ups — drives the consumption maths" },
+  routine: { label: "Routine", description: "Normal wear — oil, tyres, brake pads" },
+  repair: { label: "Repair", description: "Unexpected breakdowns and fixes" },
+  admin: { label: "Admin", description: "Insurance, parking, vignette, paperwork" },
+  other: { label: "Other", description: "Discretionary extras you didn't have to buy" },
+};
+
+// All icons selectable in the category manager. Keep keys stable: they're
+// stored verbatim in the database.
+export const ICON_MAP: Record<string, LucideIcon> = {
+  Fuel,
+  Droplet,
+  Wrench,
+  Receipt,
+  Sparkles,
+  Tag,
+  Car,
+  ShieldCheck,
+  ParkingSquare,
+  CircleDashed,
+  Cog,
+  Gauge,
+  Zap,
+};
+
+export const ICON_NAMES = Object.keys(ICON_MAP);
+
+// Preset palette for the colour picker.
+export const COLOR_PALETTE = [
+  "#EF9F27", // amber
+  "#4FB286", // green
+  "#C0463A", // red
+  "#888780", // stone
+  "#7F77DD", // violet
+  "#3B82F6", // blue
+  "#E94560", // pink
+  "#16A085", // teal
+  "#D97706", // orange
+  "#6B7280", // grey
+];
+
+export function iconFor(name: string): LucideIcon {
+  return ICON_MAP[name] ?? Tag;
+}
 
 export function CategoryIcon({
   category,
   className = "size-4",
 }: {
-  category: Category;
+  category: { color: string; icon: string } | null | undefined;
   className?: string;
 }) {
-  const Icon = CATEGORY_META[category].icon;
-  return <Icon className={className} style={{ color: CATEGORY_META[category].color }} />;
+  const Icon = iconFor(category?.icon ?? "Tag");
+  return <Icon className={className} style={{ color: category?.color ?? "currentColor" }} />;
+}
+
+export function useCategories() {
+  const fetchFn = useServerFn(listCategories);
+  return useQuery<CategoryRow[]>({
+    queryKey: ["categories"],
+    queryFn: () => fetchFn() as Promise<CategoryRow[]>,
+    staleTime: 60_000,
+  });
+}
+
+export function categoryById(cats: CategoryRow[] | undefined, id: string | null | undefined) {
+  if (!cats || !id) return undefined;
+  return cats.find((c) => c.id === id);
+}
+
+// Pick the first category matching a role, falling back to the first of any
+// role. Used for sensible defaults in OCR, import, and the "Add expense" form.
+export function defaultForRole(
+  cats: CategoryRow[] | undefined,
+  role: CategoryRole,
+): CategoryRow | undefined {
+  if (!cats || cats.length === 0) return undefined;
+  return cats.find((c) => c.role === role) ?? cats[0];
+}
+
+// Case-insensitive name match — used by CSV import and OCR mapping.
+export function findCategoryByName(
+  cats: CategoryRow[] | undefined,
+  name: string,
+): CategoryRow | undefined {
+  if (!cats) return undefined;
+  const target = name.trim().toLowerCase();
+  if (!target) return undefined;
+  return cats.find((c) => c.name.toLowerCase() === target);
 }
