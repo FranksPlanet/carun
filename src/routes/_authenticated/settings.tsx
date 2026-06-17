@@ -98,6 +98,35 @@ function SettingsPage() {
 
       <section className="kpi-card space-y-3">
         <h2 className="font-semibold flex items-center gap-2">
+          <Gauge className="size-4" aria-hidden /> Default cost-per-km view
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Choose which figure to feature on the dashboard. The other two stay visible underneath.
+        </p>
+        <div className="grid gap-2">
+          {CPK_MODES.map((m) => {
+            const active = m.id === cpkMode;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setCpkMode(m.id)}
+                disabled={savingMode != null || profileQ.isLoading}
+                className={`w-full text-left rounded-md border px-3 py-2 transition-colors ${
+                  active ? "border-primary bg-primary/5" : "border-border hover:bg-secondary"
+                }`}
+              >
+                <div className="text-sm font-medium">{m.label}</div>
+                <div className="text-xs text-muted-foreground">{m.hint}</div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+
+      <section className="kpi-card space-y-3">
+        <h2 className="font-semibold flex items-center gap-2">
           <Tag className="size-4" aria-hidden /> Categories
         </h2>
         <CategoriesManager />
