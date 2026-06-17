@@ -43,12 +43,13 @@ export const listExpenses = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const { data: out, error } = await context.supabase
       .from("expenses")
-      .select("*, categories ( id, name, color, icon, role )")
+      .select("*, categories!expenses_category_id_fkey ( id, name, color, icon, role )")
       .eq("vehicle_id", data.vehicle_id)
       .order("date", { ascending: false });
     if (error) throw new Error(error.message);
     return flatten(out ?? []);
   });
+
 
 async function assertOwnsVehicle(supabase: any, vehicleId: string) {
   const { data, error } = await supabase.from("vehicles").select("id").eq("id", vehicleId).maybeSingle();
