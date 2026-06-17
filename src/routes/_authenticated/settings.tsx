@@ -1,15 +1,24 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Settings as SettingsIcon, Download, Trash2, Tag } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Settings as SettingsIcon, Download, Trash2, Tag, Gauge } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { exportAllData, deleteAccountAndAllData } from "@/lib/account.functions";
+import { getProfile, updateProfile } from "@/lib/profile.functions";
 import { CategoriesManager } from "@/components/categories-manager";
 import { t } from "@/lib/strings";
+import type { CostPerKmMode } from "@/lib/calc";
+
+const CPK_MODES: { id: CostPerKmMode; label: string; hint: string }[] = [
+  { id: "operating", label: "Operating only", hint: "Everything except the car's capital cost" },
+  { id: "with_depreciation", label: "Incl. depreciation", hint: "Honest cost of owning it so far" },
+  { id: "with_full_purchase", label: "Incl. full purchase price", hint: "Gross figure incl. the whole sticker" },
+];
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({ meta: [{ title: "Settings — RevTab" }] }),
