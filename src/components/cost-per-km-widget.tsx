@@ -24,9 +24,10 @@ type Props = {
   views: CostPerKmViews;
   mode: CostPerKmMode;
   settings: ProfileSettings;
+  bare?: boolean;
 };
 
-export function CostPerKmWidget({ views, mode, settings }: Props) {
+export function CostPerKmWidget({ views, mode, settings, bare }: Props) {
   const update = useServerFn(updateProfile);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -47,7 +48,7 @@ export function CostPerKmWidget({ views, mode, settings }: Props) {
   const headlineMode = MODES.find((m) => m.id === mode)!;
 
   return (
-    <div className="kpi-card col-span-2 space-y-3">
+    <div className={bare ? "space-y-3" : "kpi-card col-span-2 space-y-3"}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="kpi-label">{t.kpi.costPerKm}</div>
