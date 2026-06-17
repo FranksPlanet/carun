@@ -77,7 +77,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { name: "theme-color", content: "#D85A30" },
+      { name: "theme-color", content: "#993C1D" },
       { title: "RevTab — Smart Car Costs Calculator" },
       { name: "description", content: "RevTab helps you get insights into how much you actually spend on driving, maintaining and running your car." },
       { name: "author", content: "Lovable" },
