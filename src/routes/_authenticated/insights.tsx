@@ -84,12 +84,23 @@ function InsightsPage() {
     enabled: !!vehicle,
   });
 
+  const { categories } = useCategories();
+
   const settings = profileQ.data ?? defaultSettings;
   const currency = vehicle?.currency ?? settings.currency;
   const moneySettings = { ...settings, currency };
-  const expenses = (expensesQ.data ?? []) as ExpenseRow[];
+  // Map the joined category role onto every row. The server already flattens
+  // role, but we re-map from the local categories list as a belt-and-braces
+  // guarantee — calc.ts identifies fuel by `role === 'fuel'`, so a missing
+  // role would blank out consumption, fuel rate, and maintenance/km.
+  const expenses = useMemo<ExpenseRow[]>(() => {
+    const raw = (expensesQ.data ?? []) as any[];
+    const byId = new Map(categories.map((c) => [c.id, c.role] as const));
+    return raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
+  }, [expensesQ.data, categories]);
   const recurring = (recurringQ.data ?? []) as { amount_minor_per_year: number }[];
   const repairs = (repairsQ.data ?? []) as { amount_minor: number }[];
+
 
   const points = useMemo(() => consumptionPoints(expenses), [expenses]);
   const segAvg = useMemo(() => segmentedAverages(points), [points]);
