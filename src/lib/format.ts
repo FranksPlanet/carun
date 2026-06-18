@@ -39,12 +39,19 @@ const localeForCurrency: Record<string, string> = {
   GBP: "en-GB",
 };
 
+// Non-breaking space — used as thousands separator AND between number+unit
+// so a single number/unit token never breaks across two lines.
+const NBSP = "\u00A0";
+
 export function formatNumber(value: number, fraction = 0, currency = "CZK"): string {
   const loc = localeForCurrency[currency] ?? "cs-CZ";
-  return new Intl.NumberFormat(loc, {
+  const out = new Intl.NumberFormat(loc, {
     minimumFractionDigits: fraction,
     maximumFractionDigits: fraction,
   }).format(value);
+  // Replace any whitespace (regular space, thin space, narrow no-break space)
+  // with a regular non-breaking space (U+00A0).
+  return out.replace(/[\s\u202F\u00A0]/g, NBSP);
 }
 
 export function formatMoney(amountMinor: number, settings: ProfileSettings, fraction?: number): string {
@@ -53,7 +60,7 @@ export function formatMoney(amountMinor: number, settings: ProfileSettings, frac
   const major = amountMinor / Math.pow(10, digits);
   const symbol = currencySymbol[cur] ?? cur;
   const f = fraction ?? (Math.abs(major) >= 100 ? 0 : 2);
-  return `${formatNumber(major, f, cur)} ${symbol}`;
+  return `${formatNumber(major, f, cur)}${NBSP}${symbol}`;
 }
 
 export function moneyMinorToMajor(amountMinor: number, currency: string): number {
@@ -67,16 +74,16 @@ export function moneyMajorToMinor(major: number, currency: string): number {
 
 export function formatDistance(km: number, settings: ProfileSettings, fraction = 0): string {
   if (settings.distance_unit === "mi") {
-    return `${formatNumber(km * KM_TO_MI, fraction, settings.currency)} mi`;
+    return `${formatNumber(km * KM_TO_MI, fraction, settings.currency)}${NBSP}mi`;
   }
-  return `${formatNumber(km, fraction, settings.currency)} km`;
+  return `${formatNumber(km, fraction, settings.currency)}${NBSP}km`;
 }
 
 export function formatVolume(liters: number, settings: ProfileSettings, fraction = 2): string {
   if (settings.volume_unit === "gal") {
-    return `${formatNumber(liters * L_TO_GAL, fraction, settings.currency)} gal`;
+    return `${formatNumber(liters * L_TO_GAL, fraction, settings.currency)}${NBSP}gal`;
   }
-  return `${formatNumber(liters, fraction, settings.currency)} l`;
+  return `${formatNumber(liters, fraction, settings.currency)}${NBSP}l`;
 }
 
 export function formatPricePerLiter(pricePerLiter: number, settings: ProfileSettings): string {
@@ -84,9 +91,9 @@ export function formatPricePerLiter(pricePerLiter: number, settings: ProfileSett
   const digits = currencyMinorDigits[settings.currency] ?? 2;
   const major = pricePerLiter / Math.pow(10, digits);
   if (settings.volume_unit === "gal") {
-    return `${formatNumber(major / L_TO_GAL, 2, settings.currency)} ${sym}/gal`;
+    return `${formatNumber(major / L_TO_GAL, 2, settings.currency)}${NBSP}${sym}/gal`;
   }
-  return `${formatNumber(major, 2, settings.currency)} ${sym}/l`;
+  return `${formatNumber(major, 2, settings.currency)}${NBSP}${sym}/l`;
 }
 
 export function formatCostPerKm(costPerKm: number, settings: ProfileSettings): string {
@@ -94,9 +101,9 @@ export function formatCostPerKm(costPerKm: number, settings: ProfileSettings): s
   const digits = currencyMinorDigits[settings.currency] ?? 2;
   const major = costPerKm / Math.pow(10, digits);
   if (settings.distance_unit === "mi") {
-    return `${formatNumber(major / KM_TO_MI, 2, settings.currency)} ${sym}/mi`;
+    return `${formatNumber(major / KM_TO_MI, 2, settings.currency)}${NBSP}${sym}/mi`;
   }
-  return `${formatNumber(major, 2, settings.currency)} ${sym}/km`;
+  return `${formatNumber(major, 2, settings.currency)}${NBSP}${sym}/km`;
 }
 
 export function formatConsumption(lPer100km: number | null, settings: ProfileSettings): string {
@@ -104,14 +111,14 @@ export function formatConsumption(lPer100km: number | null, settings: ProfileSet
   switch (settings.consumption_style) {
     case "km_per_l": {
       const kpl = 100 / lPer100km;
-      return `${formatNumber(kpl, 2, settings.currency)} km/l`;
+      return `${formatNumber(kpl, 2, settings.currency)}${NBSP}km/l`;
     }
     case "mpg": {
       const mpg = (100 / lPer100km) * KM_TO_MI / L_TO_GAL;
-      return `${formatNumber(mpg, 1, settings.currency)} mpg`;
+      return `${formatNumber(mpg, 1, settings.currency)}${NBSP}mpg`;
     }
     default:
-      return `${formatNumber(lPer100km, 2, settings.currency)} l/100km`;
+      return `${formatNumber(lPer100km, 2, settings.currency)}${NBSP}l/100km`;
   }
 }
 

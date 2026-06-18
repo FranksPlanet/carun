@@ -266,7 +266,7 @@ function Dashboard() {
           {/* Fuel widget */}
           <div
             className="p-4 sm:p-5 border-t border-border"
-            style={{ background: "color-mix(in oklab, var(--color-sand) 50%, var(--color-card))" }}
+            style={{ background: "color-mix(in oklab, var(--color-secondary) 50%, var(--color-card))" }}
           >
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">

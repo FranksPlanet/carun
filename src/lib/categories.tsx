@@ -64,18 +64,18 @@ export const ICON_MAP: Record<string, LucideIcon> = {
 
 export const ICON_NAMES = Object.keys(ICON_MAP);
 
-// Preset palette for the colour picker.
+// Preset palette for the colour picker. Muted, modern, chart-readable.
 export const COLOR_PALETTE = [
-  "#EF9F27", // amber
-  "#4FB286", // green
-  "#C0463A", // red
-  "#888780", // stone
-  "#7F77DD", // violet
-  "#3B82F6", // blue
-  "#E94560", // pink
-  "#16A085", // teal
-  "#D97706", // orange
-  "#6B7280", // grey
+  "#E0A422", // fuel — amber
+  "#2FA37C", // routine — green
+  "#C24A39", // service — red
+  "#8A8A82", // admin — stone
+  "#6E63C8", // other — violet
+  "#3B6FA0", // blue
+  "#B95C8A", // pink
+  "#1F8A7A", // teal
+  "#B86A1E", // orange
+  "#5F6368", // grey
 ];
 
 export function iconFor(name: string): LucideIcon {

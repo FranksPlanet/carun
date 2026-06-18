@@ -56,27 +56,23 @@ function AuthLayout() {
 
   return (
     <div className="min-h-dvh flex flex-col bg-background pb-[calc(5.5rem+env(safe-area-inset-bottom))]">
-      {/* Top app bar — deep terracotta, fills the notch / status-bar area */}
+      {/* Top app bar — ink, fills the notch / status-bar area */}
       <header
-        className="sticky top-0 z-30 bg-[#993C1D] text-white"
+        className="sticky top-0 z-30 bg-[#16150F] text-white"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         <div className="mx-auto max-w-3xl px-3 sm:px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-2 min-h-14">
-          {/* Brand: logo slot + wordmark, links home */}
+          {/* Brand: acid dot + wordmark in Instrument Serif */}
           <Link
             to="/dashboard"
             className="flex items-center gap-2 mr-auto min-w-0"
             aria-label="RevTab — go to dashboard"
           >
-            <div
-              className="size-8 rounded-lg bg-white/10 ring-1 ring-white/20 grid place-items-center overflow-hidden shrink-0"
-              aria-label="Logo slot"
-              data-logo-slot
-            >
-              {/* Drop a white logo image here later, e.g. <img src="/logo-white.svg" alt="" /> */}
-              <span className="font-display font-bold text-white text-sm">R</span>
-            </div>
-            <span className="font-display font-semibold text-lg tracking-tight truncate">
+            <span
+              aria-hidden
+              className="inline-block size-2.5 rounded-full bg-[#C8F031] shrink-0"
+            />
+            <span className="font-display text-2xl leading-none tracking-tight text-white truncate">
               {t.appName}
             </span>
           </Link>
@@ -89,10 +85,10 @@ function AuthLayout() {
                 <Link
                   key={l.to}
                   to={l.to}
-                  className={`px-2.5 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-sm text-sm font-medium transition-colors ${
                     active
-                      ? "bg-white text-[#993C1D]"
-                      : "text-white/85 hover:text-white hover:bg-white/10"
+                      ? "bg-[#C8F031] text-[#16150F]"
+                      : "text-white/65 hover:text-white hover:bg-white/10"
                   }`}
                 >
                   {l.label}
@@ -104,7 +100,7 @@ function AuthLayout() {
               <SheetTrigger asChild>
                 <button
                   type="button"
-                  className="px-2.5 sm:px-3 py-1.5 rounded-md text-sm font-semibold tracking-wide text-white/90 hover:text-white hover:bg-white/10 transition-colors"
+                  className="px-2.5 sm:px-3 py-1.5 rounded-sm text-sm font-semibold tracking-wide text-white/65 hover:text-white hover:bg-white/10 transition-colors"
                   aria-label="Open menu"
                 >
                   MENU
@@ -148,7 +144,8 @@ function AuthLayout() {
           <Button
             onClick={openAddExpense}
             size="lg"
-            className="w-full h-14 text-base font-semibold rounded-2xl shadow-lg"
+            variant="accent"
+            className="w-full h-14 text-base font-semibold rounded-sm shadow-lg"
           >
             <Plus className="size-5 mr-2" /> Add expense
           </Button>
