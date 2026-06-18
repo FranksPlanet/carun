@@ -67,6 +67,7 @@ function GaragePage() {
               <VehicleEditDialog
                 vehicle={{
                   id: v.id,
+                  name: v.name,
                   currency: v.currency ?? settings.currency,
                   estimated_resale_value_minor: v.estimated_resale_value_minor ?? null,
                 }}
