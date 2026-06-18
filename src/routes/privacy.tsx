@@ -16,8 +16,9 @@ export const Route = createFileRoute("/privacy")({
 
 function PrivacyPage() {
   return (
-    <div className="min-h-dvh bg-background px-4 py-10">
-      <div className="mx-auto max-w-2xl space-y-6">
+    <div className="min-h-dvh bg-background">
+      <PublicTopBar />
+      <div className="mx-auto max-w-2xl space-y-6 px-4 py-10">
         <div>
           <Link to="/" className="text-sm text-primary hover:underline">
             ← Back to RevTab
