@@ -349,5 +349,7 @@ function FuelStat({ label, value }: { label: string; value: string }) {
 function formatPricePerLiterLocal(minorPerLiter: number, currency: string): string {
   const symbols: Record<string, string> = { CZK: "Kč", EUR: "€", USD: "$", GBP: "£" };
   const major = minorPerLiter / 100;
-  return `${major.toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${symbols[currency] ?? currency}/l`;
+  const num = major.toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    .replace(/[\s\u202F]/g, "\u00A0");
+  return `${num}\u00A0${symbols[currency] ?? currency}/l`;
 }
