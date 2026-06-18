@@ -11,12 +11,23 @@ import {
 } from "@/lib/format";
 
 // Animate a number from 0 → target once, keyed by `key`. Linear-ease cubic.
+// If the first target is 0 (loading), the hook re-animates when a real value arrives.
 function useCountUp(target: number, key: string, durationMs = 900): number {
   const [value, setValue] = useState(0);
   const lastKey = useRef<string | null>(null);
+  const prevTarget = useRef<number | null>(null);
   useEffect(() => {
-    if (lastKey.current === key) return;
+    if (lastKey.current === key) {
+      // We already animated for this key. Re-animate only if we were stuck
+      // on a 0 loading state and now have a real value.
+      if (prevTarget.current === 0 && target !== 0) {
+        lastKey.current = null;
+      } else {
+        return;
+      }
+    }
     lastKey.current = key;
+    prevTarget.current = target;
     if (!isFinite(target)) { setValue(target); return; }
     const start = performance.now();
     let raf = 0;
