@@ -140,9 +140,9 @@ function Dashboard() {
   if (vehiclesQ.isLoading || profileQ.isLoading || !vehiclesQ.isSuccess) {
     return (
       <div className="space-y-4">
-        <div className="aspect-video w-full rounded-2xl bg-muted animate-pulse" />
-        <div className="h-24 rounded-2xl bg-muted animate-pulse" />
-        <div className="h-48 rounded-2xl bg-muted animate-pulse" />
+        <div className="aspect-video w-full rounded-sm bg-muted animate-pulse" />
+        <div className="h-24 rounded-sm bg-muted animate-pulse" />
+        <div className="h-48 rounded-sm bg-muted animate-pulse" />
       </div>
     );
   }
@@ -150,9 +150,9 @@ function Dashboard() {
   if (vehicles.length === 0) {
     return (
       <div className="text-center py-16">
-        <h1 className="text-2xl font-semibold mb-2">Welcome to {t.appName}</h1>
+        <h1 className="display text-3xl mb-2">Welcome to {t.appName}</h1>
         <p className="text-muted-foreground mb-6">{t.empty.noVehicles}</p>
-        <Button onClick={() => navigate({ to: "/onboarding" })} className="rounded-full">
+        <Button onClick={() => navigate({ to: "/onboarding" })} variant="accent">
           <Plus className="size-4 mr-1" /> Add vehicle
         </Button>
       </div>
@@ -180,39 +180,42 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Car hero */}
-      {vehicle && (
-        <VehicleHero
-          vehicle={{
-            id: vehicle.id,
-            name: vehicle.name,
-            currency: vehicle.currency,
-            photo_path: (vehicle as any).photo_path ?? null,
-            estimated_resale_value_minor:
-              (vehicle as any).estimated_resale_value_minor ?? null,
-          }}
-        />
-      )}
-
-      {/* Your story */}
+      {/* One connected "this car" panel */}
       {vehicle && cpkViews && (
-        <StoryNarrative
-          vehicleId={vehicle.id}
-          lifetimeKm={cpkViews.lifetime_km}
-          costPerKmMinor={pickCostPerKm(cpkViews, cpkMode)}
-          totalLiters={fuel.liters}
-          pricePerLiterMinor={fuel.pricePerLiterMinor}
-          avgConsumptionLPer100Km={fuel.avg}
-          fuelSharePct={fuel.fuelSharePct}
-          settings={cardSettings}
-          hasAnyExpense={expenses.length > 0}
-        />
-      )}
+        <section className="rounded-sm border border-border bg-card overflow-hidden">
+          {/* Header: photo banner with name + wrench menu */}
+          <VehicleHero
+            flush
+            vehicle={{
+              id: vehicle.id,
+              name: vehicle.name,
+              currency: vehicle.currency,
+              photo_path: (vehicle as any).photo_path ?? null,
+              estimated_resale_value_minor:
+                (vehicle as any).estimated_resale_value_minor ?? null,
+            }}
+          />
 
-      {/* Connected "this car" group */}
-      {vehicle && cpkViews && (
-        <section className="kpi-card kpi-hero p-0 overflow-hidden">
-          <div className="p-4 sm:p-5">
+          {/* Prominent story */}
+          <div className="p-5 sm:p-6 border-b border-border">
+            <StoryNarrative
+              vehicleId={vehicle.id}
+              lifetimeKm={cpkViews.lifetime_km}
+              costPerKmMinor={pickCostPerKm(cpkViews, cpkMode)}
+              totalLiters={fuel.liters}
+              pricePerLiterMinor={fuel.pricePerLiterMinor}
+              avgConsumptionLPer100Km={fuel.avg}
+              fuelSharePct={fuel.fuelSharePct}
+              settings={cardSettings}
+              hasAnyExpense={expenses.length > 0}
+            />
+          </div>
+
+          {/* Nested cost-per-km sub-section */}
+          <div
+            className="p-4 sm:p-5 border-b border-border"
+            style={{ background: "color-mix(in oklab, var(--color-secondary) 55%, var(--color-card))" }}
+          >
             <CostPerKmWidget
               views={cpkViews}
               mode={cpkMode}
@@ -220,7 +223,6 @@ function Dashboard() {
               bare
             />
 
-            {/* Category breakdown */}
             {catBreakdown.items.length > 0 && (
               <div className="mt-4 pt-4 border-t border-border">
                 <div className="kpi-label mb-2">Where it goes</div>
@@ -238,11 +240,11 @@ function Dashboard() {
                             </span>
                           </div>
                           <div
-                            className="mt-1 h-1.5 rounded-full overflow-hidden"
+                            className="mt-1 h-1.5 overflow-hidden rounded-sm"
                             style={{ background: "color-mix(in oklab, var(--color-foreground) 6%, transparent)" }}
                           >
                             <div
-                              className="h-full rounded-full"
+                              className="h-full rounded-sm"
                               style={{ width: `${pct}%`, background: c.color }}
                             />
                           </div>
@@ -256,25 +258,25 @@ function Dashboard() {
 
             <div className="mt-4 flex justify-end">
               <Link to="/expenses">
-                <Button variant="ghost" size="sm" className="rounded-full">
+                <Button variant="ghost" size="sm">
                   View expenses <ArrowRight className="size-4 ml-1" />
                 </Button>
               </Link>
             </div>
           </div>
 
-          {/* Fuel widget */}
+          {/* Nested fuel sub-section */}
           <div
-            className="p-4 sm:p-5 border-t border-border"
-            style={{ background: "color-mix(in oklab, var(--color-secondary) 50%, var(--color-card))" }}
+            className="p-4 sm:p-5"
+            style={{ background: "color-mix(in oklab, var(--color-secondary) 30%, var(--color-card))" }}
           >
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2">
-                <Fuel className="size-4" style={{ color: "var(--color-primary)" }} />
+                <Fuel className="size-4 text-foreground" />
                 <div className="kpi-label">Fuel</div>
               </div>
               <Link to="/insights">
-                <Button variant="ghost" size="sm" className="rounded-full">
+                <Button variant="ghost" size="sm">
                   View insights <ArrowRight className="size-4 ml-1" />
                 </Button>
               </Link>
@@ -284,7 +286,7 @@ function Dashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <FuelStat
                   label="Total fuel"
-                  value={`${Math.round(fuel.liters).toLocaleString("cs-CZ")} l`}
+                  value={`${Math.round(fuel.liters).toLocaleString("cs-CZ").replace(/[\s\u202F]/g, "\u00A0")}\u00A0l`}
                 />
                 <FuelStat
                   label="Avg price"
@@ -296,11 +298,11 @@ function Dashboard() {
                 />
                 <FuelStat
                   label="Consumption"
-                  value={fuel.avg != null ? `${fuel.avg.toFixed(2)} l/100km` : "—"}
+                  value={fuel.avg != null ? `${fuel.avg.toFixed(2).replace(".", ",")}\u00A0l/100km` : "—"}
                 />
                 <FuelStat
                   label="Share of cost"
-                  value={fuel.fuelSharePct != null ? `${fuel.fuelSharePct.toFixed(0)}%` : "—"}
+                  value={fuel.fuelSharePct != null ? `${fuel.fuelSharePct.toFixed(0)}\u00A0%` : "—"}
                 />
               </div>
             ) : (
@@ -314,9 +316,9 @@ function Dashboard() {
 
       {/* Add another car — extra bottom padding so the fixed Add-expense
           button never clashes with it. */}
-      <div className="pt-2 pb-4 flex justify-center">
+      <div className="pt-2 pb-24 flex justify-center">
         <Link to="/onboarding">
-          <Button variant="outline" className="rounded-full">
+          <Button variant="outline">
             <Plus className="size-4 mr-1" /> Add another car
           </Button>
         </Link>
@@ -347,5 +349,7 @@ function FuelStat({ label, value }: { label: string; value: string }) {
 function formatPricePerLiterLocal(minorPerLiter: number, currency: string): string {
   const symbols: Record<string, string> = { CZK: "Kč", EUR: "€", USD: "$", GBP: "£" };
   const major = minorPerLiter / 100;
-  return `${major.toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${symbols[currency] ?? currency}/l`;
+  const num = major.toLocaleString("cs-CZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    .replace(/[\s\u202F]/g, "\u00A0");
+  return `${num}\u00A0${symbols[currency] ?? currency}/l`;
 }

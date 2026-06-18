@@ -208,19 +208,21 @@
     color: var(--color-acid);
   }
   .story-pill {
-    display: inline;
-    border-bottom: 1px dashed color-mix(in oklab, var(--color-foreground) 35%, transparent);
+    display: inline-block;
+    background: var(--color-acid);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    padding: 0.05em 0.35em;
+    border-radius: 2px;
     text-decoration: none;
-    transition: color 0.15s ease, border-color 0.15s ease;
     white-space: nowrap;
+    transition: filter 0.15s ease, transform 0.15s ease;
+    line-height: 1.15;
   }
-  .story-pill:hover {
-    color: var(--color-foreground);
-    border-bottom-color: var(--color-acid);
-    background: color-mix(in oklab, var(--color-acid) 40%, transparent);
-  }
+  .story-pill:hover { filter: brightness(0.96); }
+  .story-pill:active { transform: translateY(1px); }
   .nowrap { white-space: nowrap; }
 }
 
