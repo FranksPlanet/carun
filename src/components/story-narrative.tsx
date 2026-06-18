@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { ProfileSettings } from "@/lib/format";
 import {
@@ -10,42 +9,27 @@ import {
   formatConsumption,
 } from "@/lib/format";
 
-// Animate a number from 0 → target once, keyed by `key`. Linear-ease cubic.
-// If the first target is 0 (loading), the hook re-animates when a real value arrives.
-function useCountUp(target: number, key: string, durationMs = 900): number {
-  const [value, setValue] = useState(0);
-  const lastKey = useRef<string | null>(null);
-  const prevTarget = useRef<number | null>(null);
-  useEffect(() => {
-    if (lastKey.current === key) {
-      // We already animated for this key. Re-animate only if we were stuck
-      // on a 0 loading state and now have a real value.
-      if (prevTarget.current === 0 && target !== 0) {
-        lastKey.current = null;
-      } else {
-        return;
-      }
-    }
-    lastKey.current = key;
-    prevTarget.current = target;
-    if (!isFinite(target)) { setValue(target); return; }
-    const start = performance.now();
-    let raf = 0;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / durationMs);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setValue(target * eased);
-      if (t < 1) raf = requestAnimationFrame(tick);
-      else setValue(target);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, key, durationMs]);
-  return value;
+const NBSP = "\u00A0";
+
+// Compact distance like "25k km" / "850 km" / "1,2k km".
+function formatDistanceShort(km: number, settings: ProfileSettings): string {
+  const KM_TO_MI = 0.621371;
+  const isMi = settings.distance_unit === "mi";
+  const v = isMi ? km * KM_TO_MI : km;
+  const unit = isMi ? "mi" : "km";
+  if (!isFinite(v)) return `—${NBSP}${unit}`;
+  if (v < 1000) return `${formatNumber(Math.round(v), 0, settings.currency)}${NBSP}${unit}`;
+  const k = v / 1000;
+  const frac = k < 10 ? 1 : 0;
+  let num = formatNumber(k, frac, settings.currency);
+  // strip trailing ",0" / ".0"
+  num = num.replace(/[.,]0+$/, "");
+  return `${num}k${NBSP}${unit}`;
 }
 
 type Props = {
   vehicleId: string;
+  vehicleName: string;
   lifetimeKm: number;
   costPerKmMinor: number | null;
   totalLiters: number;
@@ -57,13 +41,6 @@ type Props = {
 };
 
 export function StoryNarrative(p: Props) {
-  // animate everything we have, even if not all clauses render
-  const km = useCountUp(p.lifetimeKm, `${p.vehicleId}:km`);
-  const cpk = useCountUp(p.costPerKmMinor ?? 0, `${p.vehicleId}:cpk`);
-  const liters = useCountUp(p.totalLiters, `${p.vehicleId}:liters`);
-  const price = useCountUp(p.pricePerLiterMinor ?? 0, `${p.vehicleId}:price`);
-  const share = useCountUp(p.fuelSharePct ?? 0, `${p.vehicleId}:share`);
-
   if (!p.hasAnyExpense) {
     return (
       <p className="text-base text-muted-foreground leading-relaxed">
@@ -80,29 +57,29 @@ export function StoryNarrative(p: Props) {
     p.fuelSharePct != null;
 
   return (
-    <p className="display text-foreground text-[1.5rem] sm:text-3xl leading-snug tracking-tight">
+    <div className="display text-foreground text-[1.5rem] sm:text-3xl leading-snug tracking-tight space-y-3">
       {hasKm && (
-        <>
-          You've driven{" "}
+        <p>
+          {p.vehicleName} has driven{" "}
           <Link to="/insights" hash="lifetime" className="story-pill">
-            {formatDistance(km, p.settings, 0)}
+            {formatDistanceShort(p.lifetimeKm, p.settings)}
           </Link>{" "}
           at{" "}
           <Link to="/insights" hash="lifetime" className="story-pill">
-            {formatCostPerKm(cpk, p.settings)}
+            {formatCostPerKm(p.costPerKmMinor as number, p.settings, 1)}
           </Link>
-          {hasFuel ? ". " : "."}
-        </>
+          .
+        </p>
       )}
       {hasFuel && (
-        <>
+        <p>
           You've burned{" "}
           <Link to="/insights" hash="consumption" className="story-pill">
-            {formatVolume(liters, p.settings, 0)}
+            {formatVolume(p.totalLiters, p.settings, 0)}
           </Link>{" "}
           at an average{" "}
           <Link to="/insights" hash="consumption" className="story-pill">
-            {formatPricePerLiter(price, p.settings)}
+            {formatPricePerLiter(p.pricePerLiterMinor as number, p.settings)}
           </Link>{" "}
           (
           <Link to="/insights" hash="consumption" className="story-pill">
@@ -110,16 +87,18 @@ export function StoryNarrative(p: Props) {
           </Link>
           ) — that's{" "}
           <Link to="/expenses" hash="category-breakdown" className="story-pill">
-            {formatNumber(share, 0, p.settings.currency)}%
+            {formatNumber(p.fuelSharePct as number, 0, p.settings.currency)}%
           </Link>{" "}
           of what the car costs you.
-        </>
+        </p>
       )}
       {!hasKm && !hasFuel && (
-        <span className="text-muted-foreground text-base">
+        <p className="text-muted-foreground text-base">
           Your story will fill in as you log more.
-        </span>
+        </p>
       )}
-    </p>
+      {/* Suppress unused-var warning for vehicleId; kept for future deep-link state. */}
+      <span hidden data-vehicle-id={p.vehicleId} />
+    </div>
   );
 }

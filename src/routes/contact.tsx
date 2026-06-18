@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { PublicTopBar } from "@/components/public-top-bar";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -12,8 +13,9 @@ export const Route = createFileRoute("/contact")({
 
 function ContactPage() {
   return (
-    <div className="min-h-dvh bg-background px-4 py-10">
-      <div className="mx-auto max-w-2xl space-y-6">
+    <div className="min-h-dvh bg-background">
+      <PublicTopBar />
+      <div className="mx-auto max-w-2xl space-y-6 px-4 py-10">
         <header>
           <h1 className="font-display text-3xl font-bold tracking-tight">Contact</h1>
           <p className="mt-2 text-sm text-muted-foreground">

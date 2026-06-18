@@ -91,19 +91,19 @@ export function formatPricePerLiter(pricePerLiter: number, settings: ProfileSett
   const digits = currencyMinorDigits[settings.currency] ?? 2;
   const major = pricePerLiter / Math.pow(10, digits);
   if (settings.volume_unit === "gal") {
-    return `${formatNumber(major / L_TO_GAL, 2, settings.currency)}${NBSP}${sym}/gal`;
+    return `${formatNumber(major / L_TO_GAL, 2, settings.currency)}${NBSP}${sym}${NBSP}/${NBSP}gal`;
   }
-  return `${formatNumber(major, 2, settings.currency)}${NBSP}${sym}/l`;
+  return `${formatNumber(major, 2, settings.currency)}${NBSP}${sym}${NBSP}/${NBSP}l`;
 }
 
-export function formatCostPerKm(costPerKm: number, settings: ProfileSettings): string {
+export function formatCostPerKm(costPerKm: number, settings: ProfileSettings, fraction = 2): string {
   const sym = currencySymbol[settings.currency] ?? settings.currency;
   const digits = currencyMinorDigits[settings.currency] ?? 2;
   const major = costPerKm / Math.pow(10, digits);
   if (settings.distance_unit === "mi") {
-    return `${formatNumber(major / KM_TO_MI, 2, settings.currency)}${NBSP}${sym}/mi`;
+    return `${formatNumber(major / KM_TO_MI, fraction, settings.currency)}${NBSP}${sym}${NBSP}/${NBSP}mi`;
   }
-  return `${formatNumber(major, 2, settings.currency)}${NBSP}${sym}/km`;
+  return `${formatNumber(major, fraction, settings.currency)}${NBSP}${sym}${NBSP}/${NBSP}km`;
 }
 
 export function formatConsumption(lPer100km: number | null, settings: ProfileSettings): string {
@@ -111,14 +111,14 @@ export function formatConsumption(lPer100km: number | null, settings: ProfileSet
   switch (settings.consumption_style) {
     case "km_per_l": {
       const kpl = 100 / lPer100km;
-      return `${formatNumber(kpl, 2, settings.currency)}${NBSP}km/l`;
+      return `${formatNumber(kpl, 2, settings.currency)}${NBSP}km${NBSP}/${NBSP}l`;
     }
     case "mpg": {
       const mpg = (100 / lPer100km) * KM_TO_MI / L_TO_GAL;
       return `${formatNumber(mpg, 1, settings.currency)}${NBSP}mpg`;
     }
     default:
-      return `${formatNumber(lPer100km, 2, settings.currency)}${NBSP}l/100km`;
+      return `${formatNumber(lPer100km, 2, settings.currency)}${NBSP}l${NBSP}/${NBSP}100${NBSP}km`;
   }
 }
 
