@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { PublicTopBar } from "@/components/public-top-bar";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
