@@ -49,7 +49,7 @@ export const t = {
   },
 
   kpi: {
-    costPerKm: "Cost per km",
+    costPerKm: "Cost per kilometer driven",
     trackedDistance: "Tracked distance",
     avgConsumption: "Avg consumption",
     loggedTotal: "Logged total",
