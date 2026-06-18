@@ -31,7 +31,7 @@ type VehicleLike = {
   estimated_resale_value_minor: number | null;
 };
 
-export function VehicleHero({ vehicle }: { vehicle: VehicleLike }) {
+export function VehicleHero({ vehicle, flush = false }: { vehicle: VehicleLike; flush?: boolean }) {
   const qc = useQueryClient();
   const updateFn = useServerFn(updateVehicle);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
@@ -104,7 +104,9 @@ export function VehicleHero({ vehicle }: { vehicle: VehicleLike }) {
   return (
     <>
       <div
-        className="relative overflow-hidden rounded-2xl border border-border animate-fade-in"
+        className={`relative overflow-hidden animate-fade-in ${
+          flush ? "" : "rounded-sm border border-border"
+        }`}
         style={{
           aspectRatio: "16 / 9",
           background:
@@ -128,7 +130,7 @@ export function VehicleHero({ vehicle }: { vehicle: VehicleLike }) {
 
         {/* Name overlay */}
         <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-          <h1 className="display text-white text-2xl sm:text-3xl font-semibold leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]">
+          <h1 className="display text-white text-3xl sm:text-4xl leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]">
             {vehicle.name}
           </h1>
         </div>
