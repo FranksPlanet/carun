@@ -57,7 +57,7 @@ export function StoryNarrative(p: Props) {
     return (
       <div
         className="rounded-2xl p-4 sm:p-5 text-sm leading-relaxed"
-        style={{ background: "var(--color-sand)", borderColor: "var(--color-border)" }}
+        style={{ background: "var(--color-secondary)", borderColor: "var(--color-border)" }}
       >
         <p className="text-foreground">
           Start logging and your car's story shows up here.
@@ -77,8 +77,8 @@ export function StoryNarrative(p: Props) {
     <div
       className="rounded-2xl p-4 sm:p-5 text-base leading-relaxed border"
       style={{
-        background: "var(--color-sand)",
-        borderColor: "color-mix(in oklab, var(--color-sand) 70%, var(--color-foreground) 8%)",
+        background: "var(--color-secondary)",
+        borderColor: "color-mix(in oklab, var(--color-secondary) 70%, var(--color-foreground) 8%)",
       }}
     >
       <p className="text-foreground">

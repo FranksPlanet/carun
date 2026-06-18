@@ -108,7 +108,7 @@ export function VehicleHero({ vehicle }: { vehicle: VehicleLike }) {
         style={{
           aspectRatio: "16 / 9",
           background:
-            "linear-gradient(135deg, color-mix(in oklab, var(--color-sand) 80%, var(--color-card)), var(--color-card))",
+            "linear-gradient(135deg, color-mix(in oklab, var(--color-secondary) 80%, var(--color-card)), var(--color-card))",
         }}
       >
         {signedUrl ? (
