@@ -214,7 +214,7 @@ function InsightsPage() {
       </div>
 
       {/* Consumption trend */}
-      <div className="kpi-card">
+      <div id="consumption" className="kpi-card">
         <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
           <div className="kpi-label">Consumption trend (l/100km)</div>
           {overallAvg != null && (
@@ -321,7 +321,7 @@ function InsightsPage() {
 
       {/* Lifetime cost */}
       {lifetime && (
-        <div className="kpi-card">
+        <div id="lifetime" className="kpi-card">
           <div className="flex items-baseline justify-between gap-2 flex-wrap mb-3">
             <div className="kpi-label">Lifetime cost (with backfill)</div>
             <div className="text-xs text-muted-foreground">

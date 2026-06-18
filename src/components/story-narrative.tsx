@@ -106,7 +106,7 @@ export function StoryNarrative(p: Props) {
               <span className="num">{formatPricePerLiter(price, p.settings)}</span>
             </Link>
             {" "}({formatConsumption(p.avgConsumptionLPer100Km, p.settings)}) — that's{" "}
-            <Link to="/insights" hash="categories" className="story-pill">
+            <Link to="/expenses" hash="category-breakdown" className="story-pill">
               <span className="num">{formatNumber(share, 0, p.settings.currency)}%</span>
             </Link>{" "}
             of what the car costs you.

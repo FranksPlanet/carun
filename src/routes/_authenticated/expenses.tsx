@@ -462,7 +462,7 @@ function ExpensesPage() {
 
       {/* Breakdown */}
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="kpi-card">
+        <div id="category-breakdown" className="kpi-card">
           <div className="text-sm font-semibold mb-3">Breakdown by category</div>
           {donutData.length === 0 ? (
             <div className="text-sm text-muted-foreground py-8 text-center">
