@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   LineChart,
   Line,
@@ -69,6 +69,29 @@ function InsightsPage() {
   const vehicles = vehiclesQ.data ?? [];
   const [activeVehicleId, setActiveVehicleId] = useState<string | null>(null);
   const vehicle = vehicles.find((v: any) => v.id === activeVehicleId) ?? vehicles[0];
+
+  // Scroll to hash target after sections render (TanStack Router scrolls before
+  // async data loads, so the element may not exist yet).
+  const hasScrolledToHash = useRef(false);
+  useEffect(() => {
+    if (hasScrolledToHash.current) return;
+    const hash = window.location.hash;
+    if (!hash) return;
+    const id = hash.slice(1);
+    const interval = setInterval(() => {
+      const el = document.getElementById(id);
+      if (el) {
+        hasScrolledToHash.current = true;
+        clearInterval(interval);
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 200);
+    const timeout = setTimeout(() => clearInterval(interval), 5000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, []);
 
   const expensesQ = useQuery({
     queryKey: ["expenses", vehicle?.id],
@@ -214,7 +237,7 @@ function InsightsPage() {
       </div>
 
       {/* Consumption trend */}
-      <div className="kpi-card">
+      <div id="consumption" className="kpi-card">
         <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
           <div className="kpi-label">Consumption trend (l/100km)</div>
           {overallAvg != null && (
@@ -321,7 +344,7 @@ function InsightsPage() {
 
       {/* Lifetime cost */}
       {lifetime && (
-        <div className="kpi-card">
+        <div id="lifetime" className="kpi-card">
           <div className="flex items-baseline justify-between gap-2 flex-wrap mb-3">
             <div className="kpi-label">Lifetime cost (with backfill)</div>
             <div className="text-xs text-muted-foreground">
