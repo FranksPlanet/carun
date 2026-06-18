@@ -224,12 +224,12 @@ function InsightsPage() {
       <div className="grid grid-cols-2 gap-3">
         <div className="kpi-card">
           <div className="kpi-label">{t.kpi.cleanAvg}</div>
-          <div className="kpi-value">{formatConsumption(segAvg.clean, settings)}</div>
+          <KpiValue value={formatConsumption(segAvg.clean, settings)} />
           <div className="text-xs text-muted-foreground mt-1">Untagged fills</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">{t.kpi.loadedAvg}</div>
-          <div className="kpi-value">{formatConsumption(segAvg.loaded, settings)}</div>
+          <KpiValue value={formatConsumption(segAvg.loaded, settings)} />
           <div className="text-xs text-muted-foreground mt-1">
             Towing · Fully loaded · Roof box
           </div>
