@@ -4,20 +4,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* RevTab — warm, friendly, light design system.
- * Cream paper background, white cards, terracotta accent, soft rounded.
+/* RevTab — "Ink & Acid" design system.
+ * Paper #FAFAF7, Ink #16150F, Acid accent #C8F031. Sharp 2px corners.
  */
 
 @theme inline {
-  --font-display: "Plus Jakarta Sans", "DM Sans", system-ui, sans-serif;
+  --font-display: "Instrument Serif", "Times New Roman", ui-serif, serif;
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "Inter", system-ui, sans-serif;
 
-  --radius-sm: calc(var(--radius) - 6px);
-  --radius-md: calc(var(--radius) - 4px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-xs: 2px;
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
+  --radius-3xl: 2px;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -54,49 +56,53 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --color-cat-fuel: #EF9F27;
-  --color-cat-service: #1D9E75;
-  --color-cat-admin: #888780;
-  --color-cat-other: #7F77DD;
-  --color-sand: #F5E7D6;
+  --color-ink: #16150F;
+  --color-paper: #FAFAF7;
+  --color-acid: #C8F031;
+
+  --color-cat-fuel: #E0A422;
+  --color-cat-service: #C24A39;
+  --color-cat-admin: #8A8A82;
+  --color-cat-other: #6E63C8;
+  --color-cat-routine: #2FA37C;
 }
 
 :root {
-  --radius: 1rem; /* 16px cards */
-  /* Warm light theme */
-  --background: oklch(0.974 0.012 78);     /* #FBF6EF cream */
-  --foreground: oklch(0.26 0.005 80);      /* #2C2C2A */
-  --card: oklch(1 0 0);                    /* white */
-  --card-foreground: oklch(0.26 0.005 80);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.26 0.005 80);
-  --primary: oklch(0.62 0.155 36);         /* terracotta #D85A30 */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.93 0.04 72);        /* warm sand #F5E7D6 */
-  --secondary-foreground: oklch(0.32 0.07 38); /* darker terracotta */
-  --muted: oklch(0.95 0.015 75);
-  --muted-foreground: oklch(0.45 0.008 80); /* #5F5E5A */
-  --accent: oklch(0.93 0.04 72);
-  --accent-foreground: oklch(0.32 0.07 38);
-  --destructive: oklch(0.58 0.18 30);
-  --destructive-foreground: oklch(1 0 0);
-  --warning: oklch(0.76 0.14 70);
-  --border: oklch(0.91 0.018 75);          /* soft warm border */
-  --input: oklch(0.93 0.02 75);
-  --ring: oklch(0.62 0.155 36);
-  --chart-1: #EF9F27;  /* fuel */
-  --chart-2: #1D9E75;  /* service */
-  --chart-3: #888780;  /* admin */
-  --chart-4: #7F77DD;  /* other */
-  --chart-5: #D85A30;  /* primary */
-  --sidebar: oklch(0.98 0.012 78);
-  --sidebar-foreground: oklch(0.26 0.005 80);
-  --sidebar-primary: oklch(0.62 0.155 36);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.93 0.04 72);
-  --sidebar-accent-foreground: oklch(0.32 0.07 38);
-  --sidebar-border: oklch(0.91 0.018 75);
-  --sidebar-ring: oklch(0.62 0.155 36);
+  --radius: 2px;
+  /* Ink & Acid light theme */
+  --background: #FAFAF7;                   /* paper */
+  --foreground: #16150F;                   /* ink */
+  --card: #FFFFFF;
+  --card-foreground: #16150F;
+  --popover: #FFFFFF;
+  --popover-foreground: #16150F;
+  --primary: #16150F;                      /* ink */
+  --primary-foreground: #C8F031;           /* acid text on ink */
+  --secondary: #F1F1EC;                    /* subtle paper tint */
+  --secondary-foreground: #16150F;
+  --muted: #F1F1EC;
+  --muted-foreground: #6B6B63;
+  --accent: #C8F031;                       /* acid */
+  --accent-foreground: #16150F;            /* ink on acid */
+  --destructive: #C24A39;
+  --destructive-foreground: #FFFFFF;
+  --warning: #E0A422;
+  --border: #E2E2DB;                       /* hairline */
+  --input: #E2E2DB;
+  --ring: #16150F;
+  --chart-1: #E0A422;  /* fuel */
+  --chart-2: #2FA37C;  /* routine */
+  --chart-3: #C24A39;  /* service */
+  --chart-4: #8A8A82;  /* admin */
+  --chart-5: #6E63C8;  /* other */
+  --sidebar: #FAFAF7;
+  --sidebar-foreground: #16150F;
+  --sidebar-primary: #16150F;
+  --sidebar-primary-foreground: #C8F031;
+  --sidebar-accent: #F1F1EC;
+  --sidebar-accent-foreground: #16150F;
+  --sidebar-border: #E2E2DB;
+  --sidebar-ring: #16150F;
 }
 
 .dark { color-scheme: light; }
@@ -111,13 +117,14 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     color-scheme: light;
+    font-variant-numeric: tabular-nums;
   }
   h1, h2, h3, h4, .display {
     font-family: var(--font-display);
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-weight: 400;
+    letter-spacing: -0.005em;
   }
-  .num { font-variant-numeric: tabular-nums; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 }
 
 @layer components {
@@ -125,40 +132,41 @@
     position: relative;
     background-color: var(--color-card);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border-radius: 2px;
     padding: 1.1rem 1.25rem;
-    box-shadow: 0 1px 2px color-mix(in oklab, var(--color-foreground) 4%, transparent);
   }
   .kpi-hero {
-    background: linear-gradient(135deg,
-      color-mix(in oklab, var(--color-primary) 10%, var(--color-card)),
-      var(--color-card));
-    border-color: color-mix(in oklab, var(--color-primary) 25%, var(--color-border));
+    background-color: var(--color-card);
+    border-color: var(--color-foreground);
   }
   .kpi-tile-sand {
-    background-color: var(--color-sand);
-    border-color: color-mix(in oklab, var(--color-sand) 80%, var(--color-foreground) 8%);
+    background-color: var(--color-secondary);
+    border-color: var(--color-border);
   }
   .kpi-label {
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
     font-size: 0.8rem;
     color: var(--color-muted-foreground);
     font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
   }
   .kpi-value {
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
     font-variant-numeric: tabular-nums;
     font-size: 1.75rem;
     font-weight: 600;
     color: var(--color-foreground);
     line-height: 1.15;
     margin-top: 0.35rem;
+    white-space: nowrap;
   }
   .kpi-unit {
     font-size: 0.9rem;
     color: var(--color-muted-foreground);
     margin-left: 0.2rem;
     font-weight: 400;
+    white-space: nowrap;
   }
   .est {
     border: 1px dashed color-mix(in oklab, var(--color-muted-foreground) 50%, transparent) !important;
@@ -179,37 +187,41 @@
     padding: 0.1rem 0.45rem;
     border: 1px dashed var(--color-muted-foreground);
     color: var(--color-muted-foreground);
-    border-radius: 999px;
+    border-radius: 2px;
   }
   .tag-chip {
     font-size: 0.8rem;
     padding: 0.35rem 0.75rem;
-    border-radius: 999px;
+    border-radius: 2px;
     border: 1px solid var(--color-border);
     background: var(--color-card);
     color: var(--color-foreground);
     cursor: pointer;
     user-select: none;
     transition: all 0.15s ease;
+    white-space: nowrap;
   }
   .tag-chip:hover { background: var(--color-secondary); }
   .tag-chip[data-on="true"] {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-    color: var(--color-primary-foreground);
+    background: var(--color-foreground);
+    border-color: var(--color-foreground);
+    color: var(--color-acid);
   }
   .story-pill {
     display: inline;
-    border-bottom: 1px dashed color-mix(in oklab, var(--color-primary) 55%, transparent);
+    border-bottom: 1px dashed color-mix(in oklab, var(--color-foreground) 35%, transparent);
     color: var(--color-foreground);
     font-weight: 600;
     text-decoration: none;
     transition: color 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
   }
   .story-pill:hover {
-    color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
+    color: var(--color-foreground);
+    border-bottom-color: var(--color-acid);
+    background: color-mix(in oklab, var(--color-acid) 40%, transparent);
   }
+  .nowrap { white-space: nowrap; }
 }
 
 /* Fonts loaded via <link> in src/routes/__root.tsx */
