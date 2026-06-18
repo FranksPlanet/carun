@@ -200,6 +200,7 @@ function Dashboard() {
           <div className="p-5 sm:p-6 border-b border-border">
             <StoryNarrative
               vehicleId={vehicle.id}
+              vehicleName={vehicle.name}
               lifetimeKm={cpkViews.lifetime_km}
               costPerKmMinor={pickCostPerKm(cpkViews, cpkMode)}
               totalLiters={fuel.liters}
