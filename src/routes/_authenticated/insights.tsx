@@ -731,6 +731,17 @@ function ProjectionSection({
   );
 }
 
+function KpiValue({ value }: { value: string }) {
+  const parts = value.split(/[\s\u00A0]+/);
+  if (parts.length < 2) return <div className="kpi-value">{value}</div>;
+  return (
+    <>
+      <div className="kpi-value">{parts[0]}</div>
+      <div className="text-xs text-muted-foreground mt-0.5">{parts.slice(1).join(" ")}</div>
+    </>
+  );
+}
+
 function SliderRow({
   label,
   value,
