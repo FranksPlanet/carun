@@ -154,7 +154,7 @@
   .kpi-value {
     font-family: var(--font-sans);
     font-variant-numeric: tabular-nums;
-    font-size: 1.75rem;
+    font-size: clamp(1.3rem, 5vw, 1.75rem);
     font-weight: 600;
     color: var(--color-foreground);
     line-height: 1.15;

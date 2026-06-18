@@ -224,12 +224,12 @@ function InsightsPage() {
       <div className="grid grid-cols-2 gap-3">
         <div className="kpi-card">
           <div className="kpi-label">{t.kpi.cleanAvg}</div>
-          <div className="kpi-value">{formatConsumption(segAvg.clean, settings)}</div>
+          <KpiValue value={formatConsumption(segAvg.clean, settings)} />
           <div className="text-xs text-muted-foreground mt-1">Untagged fills</div>
         </div>
         <div className="kpi-card">
           <div className="kpi-label">{t.kpi.loadedAvg}</div>
-          <div className="kpi-value">{formatConsumption(segAvg.loaded, settings)}</div>
+          <KpiValue value={formatConsumption(segAvg.loaded, settings)} />
           <div className="text-xs text-muted-foreground mt-1">
             Towing · Fully loaded · Roof box
           </div>
@@ -728,6 +728,17 @@ function ProjectionSection({
         These are adjustable assumptions to stress-test, not a fixed prediction.
       </p>
     </div>
+  );
+}
+
+function KpiValue({ value }: { value: string }) {
+  const parts = value.split(/[\s\u00A0]+/);
+  if (parts.length < 2) return <div className="kpi-value">{value}</div>;
+  return (
+    <>
+      <div className="kpi-value">{parts[0]}</div>
+      <div className="text-xs text-muted-foreground mt-0.5">{parts.slice(1).join(" ")}</div>
+    </>
   );
 }
 
