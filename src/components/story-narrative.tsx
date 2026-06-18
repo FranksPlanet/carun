@@ -55,14 +55,9 @@ export function StoryNarrative(p: Props) {
 
   if (!p.hasAnyExpense) {
     return (
-      <div
-        className="rounded-2xl p-4 sm:p-5 text-sm leading-relaxed"
-        style={{ background: "var(--color-secondary)", borderColor: "var(--color-border)" }}
-      >
-        <p className="text-foreground">
-          Start logging and your car's story shows up here.
-        </p>
-      </div>
+      <p className="text-base text-muted-foreground leading-relaxed">
+        Start logging and your car's story shows up here.
+      </p>
     );
   }
 
@@ -74,50 +69,46 @@ export function StoryNarrative(p: Props) {
     p.fuelSharePct != null;
 
   return (
-    <div
-      className="rounded-2xl p-4 sm:p-5 text-base leading-relaxed border"
-      style={{
-        background: "var(--color-secondary)",
-        borderColor: "color-mix(in oklab, var(--color-secondary) 70%, var(--color-foreground) 8%)",
-      }}
-    >
-      <p className="text-foreground">
-        {hasKm && (
-          <>
-            You've driven{" "}
-            <Link to="/insights" hash="lifetime" className="story-pill">
-              <span className="num">{formatDistance(km, p.settings, 0)}</span>
-            </Link>{" "}
-            at{" "}
-            <Link to="/insights" hash="lifetime" className="story-pill">
-              <span className="num">{formatCostPerKm(cpk, p.settings)}</span>
-            </Link>
-            {hasFuel ? ". " : "."}
-          </>
-        )}
-        {hasFuel && (
-          <>
-            You've burned{" "}
-            <Link to="/insights" hash="consumption" className="story-pill">
-              <span className="num">{formatVolume(liters, p.settings, 0)}</span>
-            </Link>{" "}
-            at an average{" "}
-            <Link to="/insights" hash="fuel-price" className="story-pill">
-              <span className="num">{formatPricePerLiter(price, p.settings)}</span>
-            </Link>
-            {" "}({formatConsumption(p.avgConsumptionLPer100Km, p.settings)}) — that's{" "}
-            <Link to="/expenses" hash="category-breakdown" className="story-pill">
-              <span className="num">{formatNumber(share, 0, p.settings.currency)}%</span>
-            </Link>{" "}
-            of what the car costs you.
-          </>
-        )}
-        {!hasKm && !hasFuel && (
-          <span className="text-muted-foreground">
-            Your story will fill in as you log more.
-          </span>
-        )}
-      </p>
-    </div>
+    <p className="display text-foreground text-[1.5rem] sm:text-3xl leading-snug tracking-tight">
+      {hasKm && (
+        <>
+          You've driven{" "}
+          <Link to="/insights" hash="lifetime" className="story-pill">
+            {formatDistance(km, p.settings, 0)}
+          </Link>{" "}
+          at{" "}
+          <Link to="/insights" hash="lifetime" className="story-pill">
+            {formatCostPerKm(cpk, p.settings)}
+          </Link>
+          {hasFuel ? ". " : "."}
+        </>
+      )}
+      {hasFuel && (
+        <>
+          You've burned{" "}
+          <Link to="/insights" hash="consumption" className="story-pill">
+            {formatVolume(liters, p.settings, 0)}
+          </Link>{" "}
+          at an average{" "}
+          <Link to="/insights" hash="consumption" className="story-pill">
+            {formatPricePerLiter(price, p.settings)}
+          </Link>{" "}
+          (
+          <Link to="/insights" hash="consumption" className="story-pill">
+            {formatConsumption(p.avgConsumptionLPer100Km, p.settings)}
+          </Link>
+          ) — that's{" "}
+          <Link to="/expenses" hash="category-breakdown" className="story-pill">
+            {formatNumber(share, 0, p.settings.currency)}%
+          </Link>{" "}
+          of what the car costs you.
+        </>
+      )}
+      {!hasKm && !hasFuel && (
+        <span className="text-muted-foreground text-base">
+          Your story will fill in as you log more.
+        </span>
+      )}
+    </p>
   );
 }
