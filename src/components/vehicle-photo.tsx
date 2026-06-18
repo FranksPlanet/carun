@@ -108,7 +108,6 @@ export function VehiclePhoto({
           ref={fileRef}
           type="file"
           accept="image/*"
-          capture="environment"
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];
