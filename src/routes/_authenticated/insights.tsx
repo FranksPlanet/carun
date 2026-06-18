@@ -70,6 +70,29 @@ function InsightsPage() {
   const [activeVehicleId, setActiveVehicleId] = useState<string | null>(null);
   const vehicle = vehicles.find((v: any) => v.id === activeVehicleId) ?? vehicles[0];
 
+  // Scroll to hash target after sections render (TanStack Router scrolls before
+  // async data loads, so the element may not exist yet).
+  const hasScrolledToHash = useRef(false);
+  useEffect(() => {
+    if (hasScrolledToHash.current) return;
+    const hash = window.location.hash;
+    if (!hash) return;
+    const id = hash.slice(1);
+    const interval = setInterval(() => {
+      const el = document.getElementById(id);
+      if (el) {
+        hasScrolledToHash.current = true;
+        clearInterval(interval);
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 200);
+    const timeout = setTimeout(() => clearInterval(interval), 5000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, []);
+
   const expensesQ = useQuery({
     queryKey: ["expenses", vehicle?.id],
     queryFn: () => fetchExpenses({ data: { vehicle_id: vehicle!.id } }),
