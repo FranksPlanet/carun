@@ -204,9 +204,8 @@ function Dashboard() {
               lifetimeKm={cpkViews.lifetime_km}
               costPerKmMinor={pickCostPerKm(cpkViews, cpkMode)}
               totalLiters={fuel.liters}
-              pricePerLiterMinor={fuel.pricePerLiterMinor}
               avgConsumptionLPer100Km={fuel.avg}
-              fuelSharePct={fuel.fuelSharePct}
+              buckets={spendingBuckets}
               settings={cardSettings}
               hasAnyExpense={expenses.length > 0}
             />
