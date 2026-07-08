@@ -100,7 +100,7 @@ function AuthLayout() {
               <SheetTrigger asChild>
                 <button
                   type="button"
-                  className="px-2.5 sm:px-3 py-1.5 rounded-sm text-sm font-semibold tracking-wide text-white/65 hover:text-white hover:bg-white/10 transition-colors"
+                  className="ml-1 px-3 py-1.5 rounded-full border border-white/70 bg-transparent text-sm font-semibold tracking-wide text-white hover:bg-white/10 transition-colors"
                   aria-label="Open menu"
                 >
                   MENU
