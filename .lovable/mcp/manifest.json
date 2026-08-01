@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://hjwhdpwzpdlbbzyddgpq.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "revtab-tracker",
+      "version": "0.1.0",
+      "title": "RevTab Tracker"
+    },
+    "tools": [
+      {
+        "name": "list_vehicles",
+        "title": "List vehicles",
+        "description": "List the signed-in user's vehicles with purchase, odometer and resale details.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_categories",
+        "title": "List expense categories",
+        "description": "List the signed-in user's expense categories, including their role (fuel, repair, routine, admin, other).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_expenses",
+        "title": "List expenses",
+        "description": "List expenses for one of the signed-in user's vehicles, newest first. Amounts are in minor units (e.g. haléře for CZK).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "vehicle_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Vehicle id from list_vehicles."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "How many rows to return (1-200, default 50)."
+            }
+          },
+          "required": [
+            "vehicle_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_expense",
+        "title": "Add an expense",
+        "description": "Record an expense for one of the signed-in user's vehicles. Amount is in minor units (e.g. 45000 = 450,00 Kč). Use list_vehicles and list_categories first.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "vehicle_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Vehicle id from list_vehicles."
+            },
+            "category_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Category id from list_categories."
+            },
+            "date": {
+              "type": "string",
+              "description": "Date of the expense, ISO format YYYY-MM-DD."
+            },
+            "odometer_km": {
+              "type": "integer",
+              "description": "Odometer reading in km at the time of the expense."
+            },
+            "amount_minor": {
+              "type": "integer",
+              "description": "Amount in minor currency units."
+            },
+            "currency": {
+              "type": "string",
+              "description": "Currency code, defaults to the vehicle's currency (CZK)."
+            },
+            "liters": {
+              "type": "number",
+              "description": "Litres filled, for fuel expenses only."
+            },
+            "full_tank": {
+              "type": "boolean",
+              "description": "Whether the tank was filled completely (fuel only)."
+            },
+            "note": {
+              "type": "string",
+              "description": "Short free-text note."
+            }
+          },
+          "required": [
+            "vehicle_id",
+            "category_id",
+            "date",
+            "odometer_km",
+            "amount_minor"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

@@ -16,11 +16,17 @@ export const Route = createFileRoute("/auth")({
       { name: "description", content: "Sign in to RevTab to track your car's true cost per kilometer." },
     ],
   }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : undefined,
+  }),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
+  // Preserve a same-origin return path (e.g. the OAuth consent screen) across sign-in.
+  const returnTo = () => (next ? window.location.origin + next : window.location.origin);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,13 +45,17 @@ function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: returnTo() },
         });
         if (error) throw error;
         toast.success("Account created. You're signed in.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+      }
+      if (next) {
+        window.location.href = next;
+        return;
       }
       navigate({ to: "/dashboard" });
     } catch (e) {
@@ -57,13 +67,17 @@ function AuthPage() {
 
   async function oauth(provider: "google" | "apple") {
     const result = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: window.location.origin,
+      redirect_uri: returnTo(),
     });
     if (result.error) {
       toast.error(result.error.message ?? "Sign-in failed");
       return;
     }
     if (result.redirected) return;
+    if (next) {
+      window.location.href = next;
+      return;
+    }
     navigate({ to: "/dashboard" });
   }
 
