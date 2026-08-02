@@ -143,11 +143,9 @@ export function ImportExpensesDialog({
       return;
     }
     try {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array", cellDates: false });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      if (!ws) throw new Error("Empty workbook");
-      const json: Record<string, any>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      const json: Record<string, any>[] = lower.endsWith(".csv")
+        ? await parseCsv(file)
+        : await parseSpreadsheet(file);
       if (json.length === 0) {
         toast.error("No rows found in the file.");
         return;
