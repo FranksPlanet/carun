@@ -794,7 +794,7 @@ function ExpensesPage() {
                   {pricePerLiter != null && (
                     <div className="text-xs text-muted-foreground mt-1">
                       {formatPricePerUnit(
-                        Math.round(pricePerLiter * 100),
+                        moneyMajorToMinor(pricePerLiter, currency),
                         selectedCategory?.unit ?? "l",
                         settings,
                       )}
