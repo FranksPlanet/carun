@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -6,6 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { updateVehicle } from "@/lib/vehicles.functions";
 import { Car, Camera, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { useSignedPhotoUrl, SIGNED_PHOTO_URL_KEY } from "@/hooks/use-signed-photo-url";
 
 export function VehiclePhoto({
   vehicleId,
@@ -18,31 +19,18 @@ export function VehiclePhoto({
 }) {
   const qc = useQueryClient();
   const updateFn = useServerFn(updateVehicle);
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const signedUrl = useSignedPhotoUrl(photoPath);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      if (!photoPath) { setSignedUrl(null); return; }
-      const { data, error } = await supabase
-        .storage
-        .from("vehicle-photos")
-        .createSignedUrl(photoPath, 60 * 60);
-      if (!cancelled) {
-        if (error) setSignedUrl(null);
-        else setSignedUrl(data?.signedUrl ?? null);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [photoPath]);
 
   const saveMut = useMutation({
     mutationFn: async (newPath: string | null) =>
       updateFn({ data: { id: vehicleId, photo_path: newPath } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["vehicles"] }),
+    onSuccess: (_data, newPath) => {
+      qc.invalidateQueries({ queryKey: ["vehicles"] });
+      qc.removeQueries({ queryKey: [SIGNED_PHOTO_URL_KEY, photoPath ?? null] });
+      qc.invalidateQueries({ queryKey: [SIGNED_PHOTO_URL_KEY, newPath ?? null] });
+    },
   });
 
   async function handleFile(file: File) {
@@ -76,7 +64,6 @@ export function VehiclePhoto({
     try {
       await supabase.storage.from("vehicle-photos").remove([photoPath]).catch(() => {});
       await saveMut.mutateAsync(null);
-      setSignedUrl(null);
       toast.success("Photo removed");
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to remove");
