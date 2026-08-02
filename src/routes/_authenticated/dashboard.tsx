@@ -100,30 +100,42 @@ function Dashboard() {
   const cpkMode: CostPerKmMode =
     ((profileQ.data as any)?.default_cost_per_km_mode as CostPerKmMode) ?? "with_depreciation";
 
-  // Fuel aggregates (used by the story and the fuel widget)
+  // Fuel aggregates — one entry per fuel-role category (N sources supported).
   const fuel = useMemo(() => {
-    const points = consumptionPoints(expenses);
-    let liters = 0;
+    const series = consumptionSeries(expenses, categories as any);
     let fuelAmount = 0;
     for (const e of expenses) {
-      if (e.role === "fuel" && e.liters && e.liters > 0) {
-        liters += e.liters;
-        fuelAmount += e.amount_minor;
-      }
+      if (e.role === "fuel") fuelAmount += e.amount_minor;
     }
-    const pricePerLiterMinor = liters > 0 ? fuelAmount / liters : null;
-    const avg = averageConsumption(points);
+    const sources = series.map((s) => {
+      let quantity = 0;
+      let amount = 0;
+      for (const e of expenses) {
+        if (e.category_id === s.category_id && e.quantity && e.quantity > 0) {
+          quantity += e.quantity;
+          amount += e.amount_minor;
+        }
+      }
+      return {
+        category_id: s.category_id,
+        name: s.category_name,
+        unit: s.unit,
+        quantity,
+        amount,
+        price_per_unit_minor: quantity > 0 ? amount / quantity : null,
+        avg: averageConsumption(s.points),
+      };
+    });
     const total = totalLogged(expenses);
     const fuelSharePct = total > 0 ? (fuelAmount / total) * 100 : null;
     return {
-      liters,
+      sources,
       fuelAmount,
-      pricePerLiterMinor,
-      avg,
       fuelSharePct,
-      hasFuel: liters > 0,
+      hasFuel: sources.some((s) => s.quantity > 0),
     };
-  }, [expenses]);
+  }, [expenses, categories]);
+
 
   // Fixed role-based spending buckets for the story stanza 3.
   const spendingBuckets = useMemo(() => {
