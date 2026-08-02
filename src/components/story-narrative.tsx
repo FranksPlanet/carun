@@ -76,16 +76,31 @@ export function StoryNarrative(p: Props) {
       {hasFuel && (
         <p>
           You've burned{" "}
-          <Link to="/insights" hash="consumption" className="story-pill">
-            {litresText}
-          </Link>{" "}
-          at an average{" "}
-          <Link to="/insights" hash="consumption" className="story-pill">
-            {consText}
-          </Link>
+          {sources.map((s, i) => {
+            const cons = consText(s);
+            const sep =
+              i === 0 ? null : i === sources.length - 1 ? " and " : ", ";
+            return (
+              <span key={s.category_id}>
+                {sep}
+                <Link to="/insights" hash="consumption" className="story-pill">
+                  {qtyText(s)}
+                </Link>
+                {cons ? (
+                  <>
+                    {sources.length === 1 ? " at an average " : " "}
+                    <Link to="/insights" hash="consumption" className="story-pill">
+                      {cons}
+                    </Link>
+                  </>
+                ) : null}
+              </span>
+            );
+          })}
           .
         </p>
       )}
+
       {buckets.length > 0 && (
         <p>
           {buckets.map((b, i) => {
