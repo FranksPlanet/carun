@@ -561,6 +561,7 @@ export function projection(
   }
   return {
     points: pts,
+    sources: sourceResults,
     fuel_minor_per_km: fuelPerKm,
     maintenance_minor_per_km: input.maintenance_minor_per_km,
     yearly_fuel_minor: yearlyFuel,
@@ -570,9 +571,10 @@ export function projection(
     total_horizon_minor: cum,
     avg_per_year_minor: input.horizon_years > 0 ? Math.round((cum - vehicle.purchase_price_minor) / input.horizon_years) : 0,
     crossover_year: crossover,
-    using_measured_consumption: measured != null,
-    avg_consumption_l_per_100km: consumption,
+    using_measured_consumption: measuredAll,
+    avg_consumption_l_per_100km: consumptionAll,
   };
+
 }
 
 
