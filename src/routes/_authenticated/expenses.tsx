@@ -19,7 +19,7 @@ import {
 } from "@/lib/expenses.functions";
 import { getProfile } from "@/lib/profile.functions";
 import {
-  consumptionPoints,
+  consumptionSeries,
   totalLogged,
   cumulativeSpend,
   CONTEXT_TAGS,
@@ -31,6 +31,9 @@ import {
   formatDistance,
   formatConsumption,
   formatVolume,
+  formatQuantity,
+  formatConsumptionUnit,
+  formatPricePerUnit,
   formatDate,
   moneyMajorToMinor,
   moneyMinorToMajor,
@@ -167,10 +170,11 @@ function ExpensesPage() {
   }, [expenses, currency, categories]);
 
   const consPointsByOdo = useMemo(() => {
-    const m = new Map<number, number>();
-    for (const p of consumptionPoints(expenses)) m.set(p.odometer_km, p.l_per_100km);
+    const m = new Map<number, { per100km: number; unit: string }>();
+    for (const s of consumptionSeries(expenses, categories as any))
+      for (const pt of s.points) m.set(pt.odometer_km, { per100km: pt.per_100km, unit: s.unit });
     return m;
-  }, [expenses]);
+  }, [expenses, categories]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(() => emptyForm(""));
@@ -670,8 +674,10 @@ function ExpensesPage() {
                     </div>
                     {isFuel && e.quantity != null && (
                       <div className="text-xs text-muted-foreground">
-                        {formatVolume(e.quantity, settings)}
-                        {cons != null ? ` · ${formatConsumption(cons, settings)}` : ""}
+                        {formatQuantity(e.quantity, cat?.unit ?? "l", settings)}
+                        {cons != null
+                          ? ` · ${formatConsumptionUnit(cons.per100km, cons.unit, settings)}`
+                          : ""}
                       </div>
                     )}
                     {e.tags && e.tags.length > 0 && (
@@ -787,7 +793,11 @@ function ExpensesPage() {
                   />
                   {pricePerLiter != null && (
                     <div className="text-xs text-muted-foreground mt-1">
-                      {pricePerLiter.toFixed(2)} {currencySymbolFor(currency)}/l
+                      {formatPricePerUnit(
+                        Math.round(pricePerLiter * 100),
+                        selectedCategory?.unit ?? "l",
+                        settings,
+                      )}
                     </div>
                   )}
                 </div>
