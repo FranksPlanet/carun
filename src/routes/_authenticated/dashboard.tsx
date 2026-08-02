@@ -18,7 +18,14 @@ import {
 } from "@/lib/calc";
 import { useCategories, type CategoryRow, CategoryIcon } from "@/lib/categories";
 
-import { defaultSettings, formatMoney } from "@/lib/format";
+import {
+  defaultSettings,
+  formatMoney,
+  formatQuantity,
+  formatPricePerUnit,
+  formatConsumptionUnit,
+} from "@/lib/format";
+
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight, Fuel } from "lucide-react";
 import { t } from "@/lib/strings";
