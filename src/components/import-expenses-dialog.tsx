@@ -196,6 +196,10 @@ export function ImportExpensesDialog({
       toast.error("Apple .numbers isn't supported. Please export to CSV or XLSX.");
       return;
     }
+    if (lower.endsWith(".xls") && !lower.endsWith(".xlsx")) {
+      toast.error("Old-style .xls isn't supported — please re-save as .xlsx or export to CSV.");
+      return;
+    }
     try {
       const json: Record<string, any>[] = lower.endsWith(".csv")
         ? await parseCsv(file)
