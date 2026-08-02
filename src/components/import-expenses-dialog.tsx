@@ -28,14 +28,14 @@ import {
   type CategoryRow,
 } from "@/lib/categories";
 
-type RevTabField = "date" | "odometer" | "category" | "amount" | "liters" | "note" | "";
+type RevTabField = "date" | "odometer" | "category" | "amount" | "quantity" | "note" | "";
 
 const FIELD_LABELS: Record<Exclude<RevTabField, "">, string> = {
   date: "Date",
   odometer: "Odometer (km)",
   category: "Category",
   amount: "Amount",
-  liters: "Liters (fuel only)",
+  quantity: "Quantity (fuel only)",
   note: "Note",
 };
 
@@ -47,7 +47,7 @@ function autodetect(header: string): RevTabField {
   if (/odo|km|mile|tach/.test(h)) return "odometer";
   if (/categ|kateg|type|typ/.test(h)) return "category";
   if (/amount|total|cena|částka|castka|sum|cost|price/.test(h)) return "amount";
-  if (/liter|litr|volume|gal/.test(h)) return "liters";
+  if (/liter|litr|volume|gal/.test(h)) return "quantity";
   if (/note|pozn|comment|memo|desc/.test(h)) return "note";
   return "";
 }
@@ -120,7 +120,7 @@ export function ImportExpensesDialog({
     odometer: "",
     category: "",
     amount: "",
-    liters: "",
+    quantity: "",
     note: "",
     "": "",
   });
@@ -129,7 +129,7 @@ export function ImportExpensesDialog({
   function reset() {
     setHeaders([]);
     setRows([]);
-    setMapping({ date: "", odometer: "", category: "", amount: "", liters: "", note: "", "": "" });
+    setMapping({ date: "", odometer: "", category: "", amount: "", quantity: "", note: "", "": "" });
     setFileName("");
   }
 
@@ -155,7 +155,7 @@ export function ImportExpensesDialog({
         odometer: "",
         category: "",
         amount: "",
-        liters: "",
+        quantity: "",
         note: "",
         "": "",
       };
@@ -178,7 +178,7 @@ export function ImportExpensesDialog({
       odometer: mapping.odometer ? r[mapping.odometer] : "",
       category: mapping.category ? r[mapping.category] : "",
       amount: mapping.amount ? r[mapping.amount] : "",
-      liters: mapping.liters ? r[mapping.liters] : "",
+      quantity: mapping.quantity ? r[mapping.quantity] : "",
       note: mapping.note ? r[mapping.note] : "",
     }));
   }, [rows, mapping]);
@@ -197,10 +197,10 @@ export function ImportExpensesDialog({
         const date = normalizeDate(r[mapping.date]);
         const odo = Math.round(normalizeNumber(r[mapping.odometer]));
         const amt = normalizeNumber(r[mapping.amount]);
-        const lt = mapping.liters ? normalizeNumber(r[mapping.liters]) : null;
+        const lt = mapping.quantity ? normalizeNumber(r[mapping.quantity]) : null;
         const note = mapping.note ? String(r[mapping.note] ?? "").slice(0, 500) : null;
-        const hasLiters = lt != null && isFinite(lt) && lt > 0;
-        const fallback = hasLiters ? fuelDefault ?? routineDefault : routineDefault;
+        const hasQuantity = lt != null && isFinite(lt) && lt > 0;
+        const fallback = hasQuantity ? fuelDefault ?? routineDefault : routineDefault;
         const cat = mapping.category
           ? resolveCategory(cats, r[mapping.category], fallback)
           : fallback;
@@ -216,7 +216,7 @@ export function ImportExpensesDialog({
           category_id: cat.id,
           amount_minor: moneyMajorToMinor(amt, currency),
           currency,
-          liters: isFuel && hasLiters ? lt : null,
+          quantity: isFuel && hasQuantity ? lt : null,
           full_tank: isFuel ? true : null,
           tags: [],
           note: note || null,
@@ -318,7 +318,7 @@ export function ImportExpensesDialog({
                 <table className="w-full text-xs">
                   <thead className="bg-muted/40">
                     <tr>
-                      {(["date", "odometer", "category", "amount", "liters", "note"] as const).map((k) => (
+                      {(["date", "odometer", "category", "amount", "quantity", "note"] as const).map((k) => (
                         <th key={k} className="text-left px-2 py-1 font-medium">
                           {FIELD_LABELS[k]}
                         </th>
@@ -328,7 +328,7 @@ export function ImportExpensesDialog({
                   <tbody>
                     {preview.map((p, i) => (
                       <tr key={i} className="border-t border-border">
-                        {(["date", "odometer", "category", "amount", "liters", "note"] as const).map((k) => (
+                        {(["date", "odometer", "category", "amount", "quantity", "note"] as const).map((k) => (
                           <td key={k} className="px-2 py-1 align-top">
                             {String(p[k] ?? "")}
                           </td>
