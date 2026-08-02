@@ -8,7 +8,7 @@ import { listRepairs } from "@/lib/repairs.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { useMemo, useState } from "react";
 import {
-  consumptionPoints,
+  consumptionSeries,
   averageConsumption,
   lifetimeBreakdown,
   costPerKmViews,
