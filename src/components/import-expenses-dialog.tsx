@@ -98,6 +98,60 @@ function normalizeNumber(v: any): number {
   return parseLocalNumber(String(v ?? ""));
 }
 
+// Flatten an ExcelJS cell value to the primitive shape the rest of the
+// component expects. Empty/null cells become "" (matching SheetJS defval: "").
+function cellValue(v: any): any {
+  if (v == null) return "";
+  if (v instanceof Date) return v;
+  if (typeof v === "object") {
+    if (Array.isArray(v.richText)) return v.richText.map((t: any) => t.text).join("");
+    if ("result" in v) return cellValue(v.result); // formula cell
+    if ("text" in v) return v.text; // hyperlink cell
+    if ("error" in v) return "";
+    return String(v);
+  }
+  return v;
+}
+
+async function parseCsv(file: File): Promise<Record<string, any>[]> {
+  const text = await file.text();
+  const res = Papa.parse<Record<string, any>>(text, {
+    header: true,
+    skipEmptyLines: true,
+  });
+  return res.data ?? [];
+}
+
+async function parseSpreadsheet(file: File): Promise<Record<string, any>[]> {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await file.arrayBuffer());
+  const ws = wb.worksheets[0];
+  if (!ws) throw new Error("Empty workbook");
+
+  const headerRow = ws.getRow(1);
+  const headers: string[] = [];
+  headerRow.eachCell({ includeEmpty: true }, (cell, col) => {
+    headers[col - 1] = String(cellValue(cell.value) ?? "").trim();
+  });
+  if (headers.filter(Boolean).length === 0) return [];
+
+  const out: Record<string, any>[] = [];
+  ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const obj: Record<string, any> = {};
+    let hasValue = false;
+    headers.forEach((h, i) => {
+      if (!h) return;
+      const v = cellValue(row.getCell(i + 1).value);
+      if (v !== "") hasValue = true;
+      obj[h] = v;
+    });
+    if (hasValue) out.push(obj);
+  });
+  return out;
+}
+
+
 export function ImportExpensesDialog({
   open,
   onOpenChange,
