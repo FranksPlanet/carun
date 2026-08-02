@@ -24,6 +24,7 @@ export type Database = {
           name: string
           role: Database["public"]["Enums"]["category_role"]
           sort_order: number
+          unit: string | null
           updated_at: string
           user_id: string
         }
@@ -36,6 +37,7 @@ export type Database = {
           name: string
           role: Database["public"]["Enums"]["category_role"]
           sort_order?: number
+          unit?: string | null
           updated_at?: string
           user_id: string
         }
@@ -48,6 +50,7 @@ export type Database = {
           name?: string
           role?: Database["public"]["Enums"]["category_role"]
           sort_order?: number
+          unit?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -65,9 +68,9 @@ export type Database = {
           legacy_category:
             | Database["public"]["Enums"]["expense_category"]
             | null
-          liters: number | null
           note: string | null
           odometer_km: number
+          quantity: number | null
           receipt_path: string | null
           tags: string[]
           updated_at: string
@@ -85,9 +88,9 @@ export type Database = {
           legacy_category?:
             | Database["public"]["Enums"]["expense_category"]
             | null
-          liters?: number | null
           note?: string | null
           odometer_km: number
+          quantity?: number | null
           receipt_path?: string | null
           tags?: string[]
           updated_at?: string
@@ -105,9 +108,9 @@ export type Database = {
           legacy_category?:
             | Database["public"]["Enums"]["expense_category"]
             | null
-          liters?: number | null
           note?: string | null
           odometer_km?: number
+          quantity?: number | null
           receipt_path?: string | null
           tags?: string[]
           updated_at?: string

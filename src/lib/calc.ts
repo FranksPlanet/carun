@@ -12,10 +12,20 @@ export type ExpenseRow = {
   // identify fuel expenses by `role === 'fuel'`, never by name.
   role: CategoryRole;
   amount_minor: number;
-  liters: number | null;
+  // Amount purchased, in the unit of its category (litres, kWh, kg, …).
+  quantity: number | null;
   full_tank: boolean | null;
   tags: string[];
 };
+
+export type CategoryRow = {
+  id: string;
+  name: string;
+  role: CategoryRole;
+  unit: string | null;
+  sort_order: number;
+};
+
 
 export type RecurringRow = {
   amount_minor_per_year: number;
@@ -126,9 +136,11 @@ export function categoryCostPerKm(expenses: ExpenseRow[]): Record<CategoryRole, 
 export type ConsumptionPoint = {
   date: string;
   odometer_km: number;
+  // Quantity consumed over the segment, in the category's unit.
   liters: number;
   distance_km: number;
-  l_per_100km: number;
+  // Unit-agnostic: quantity per 100 km, same formula as before.
+  per_100km: number;
   price_per_liter: number;
   tags: string[];
   is_loaded: boolean;
@@ -136,29 +148,36 @@ export type ConsumptionPoint = {
   baseline: number | null;
 };
 
-export function consumptionPoints(expenses: ExpenseRow[]): ConsumptionPoint[] {
-  const fuels = expenses
-    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
-    .sort((a, b) => a.odometer_km - b.odometer_km);
+export type FuelSeries = {
+  category_id: string;
+  category_name: string;
+  unit: string;
+  points: ConsumptionPoint[];
+};
+
+// Full-tank-to-full-tank consumption points for a single set of fuel expenses
+// (already scoped to one category).
+function pointsForCategory(fuelExpenses: ExpenseRow[]): ConsumptionPoint[] {
+  const fuels = [...fuelExpenses].sort((a, b) => a.odometer_km - b.odometer_km);
   const points: ConsumptionPoint[] = [];
   let lastFullIdx = -1;
   for (let i = 0; i < fuels.length; i++) {
     if (!fuels[i].full_tank) continue;
     if (lastFullIdx >= 0) {
-      // sum liters from (lastFullIdx, i] excluding the lastFullIdx fillup itself
-      let liters = 0;
-      for (let k = lastFullIdx + 1; k <= i; k++) liters += fuels[k].liters ?? 0;
+      // sum quantity from (lastFullIdx, i] excluding the lastFullIdx fillup itself
+      let qty = 0;
+      for (let k = lastFullIdx + 1; k <= i; k++) qty += fuels[k].quantity ?? 0;
       const dist = fuels[i].odometer_km - fuels[lastFullIdx].odometer_km;
-      const lp = fuels[i].liters ?? 0;
+      const lp = fuels[i].quantity ?? 0;
       const amt = fuels[i].amount_minor;
-      if (dist > 0 && liters > 0) {
-        const consumption = (liters / dist) * 100;
+      if (dist > 0 && qty > 0) {
+        const consumption = (qty / dist) * 100;
         points.push({
           date: fuels[i].date,
           odometer_km: fuels[i].odometer_km,
-          liters,
+          liters: qty,
           distance_km: dist,
-          l_per_100km: consumption,
+          per_100km: consumption,
           price_per_liter: lp > 0 ? amt / lp : 0,
           tags: fuels[i].tags,
           is_loaded: fuels[i].tags.some((t) => LOADED_TAGS.has(t)),
@@ -173,32 +192,63 @@ export function consumptionPoints(expenses: ExpenseRow[]): ConsumptionPoint[] {
   for (let i = 0; i < points.length; i++) {
     const prior = points.slice(Math.max(0, i - 5), i);
     if (prior.length === 0) continue;
-    const baseline = prior.reduce((s, p) => s + p.l_per_100km, 0) / prior.length;
+    const baseline = prior.reduce((s, p) => s + p.per_100km, 0) / prior.length;
     points[i].baseline = baseline;
-    if (points[i].l_per_100km > baseline * 1.15) points[i].is_spike = true;
+    if (points[i].per_100km > baseline * 1.15) points[i].is_spike = true;
   }
   return points;
+}
+
+// One independent consumption series per fuel-role category that has expenses,
+// ordered by the category's sort_order.
+export function consumptionSeries(
+  expenses: ExpenseRow[],
+  categories: CategoryRow[],
+): FuelSeries[] {
+  const fuelCats = categories
+    .filter((c) => c.role === "fuel")
+    .sort((a, b) => a.sort_order - b.sort_order);
+  const out: FuelSeries[] = [];
+  for (const cat of fuelCats) {
+    const rows = expenses.filter(
+      (e) => e.role === "fuel" && e.category_id === cat.id && e.quantity && e.quantity > 0,
+    );
+    if (rows.length === 0) continue;
+    out.push({
+      category_id: cat.id,
+      category_name: cat.name,
+      unit: cat.unit ?? "l",
+      points: pointsForCategory(rows),
+    });
+  }
+  return out;
 }
 
 export function segmentedAverages(points: ConsumptionPoint[]): { clean: number | null; loaded: number | null } {
   const clean = points.filter((p) => !p.is_loaded);
   const loaded = points.filter((p) => p.is_loaded);
   const avg = (xs: ConsumptionPoint[]) =>
-    xs.length === 0 ? null : xs.reduce((s, p) => s + p.l_per_100km, 0) / xs.length;
+    xs.length === 0 ? null : xs.reduce((s, p) => s + p.per_100km, 0) / xs.length;
   return { clean: avg(clean), loaded: avg(loaded) };
 }
 
 export function averageConsumption(points: ConsumptionPoint[]): number | null {
   if (points.length === 0) return null;
-  return points.reduce((s, p) => s + p.l_per_100km, 0) / points.length;
+  return points.reduce((s, p) => s + p.per_100km, 0) / points.length;
 }
 
-export function pricePerLiterSeries(expenses: ExpenseRow[]): { date: string; price: number }[] {
+export function pricePerUnitSeries(
+  expenses: ExpenseRow[],
+  category_id: string,
+): { date: string; price: number }[] {
   return expenses
-    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
+    .filter(
+      (e) => e.role === "fuel" && e.category_id === category_id && e.quantity && e.quantity > 0,
+    )
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((e) => ({ date: e.date, price: e.amount_minor / (e.liters as number) }));
+    .map((e) => ({ date: e.date, price: e.amount_minor / (e.quantity as number) }));
 }
+
 
 export function cumulativeSpend(expenses: ExpenseRow[]): { date: string; total: number }[] {
   const sorted = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
@@ -363,9 +413,15 @@ export function lifetimeBreakdown(
   };
 }
 
+export type ProjectionSourceInput = {
+  category_id: string;
+  price_per_unit_minor: number;
+};
+
 export type ProjectionInput = {
   annual_km: number;
-  fuel_price_per_liter_minor: number; // price in currency minor units per liter
+  // One entry per active fuel-role category for the vehicle.
+  sources: ProjectionSourceInput[];
   horizon_years: number;
   maintenance_minor_per_km: number; // user-adjustable rate for service + other
 };
@@ -377,8 +433,20 @@ export type ProjectionPoint = {
   purchase_price_minor: number;
 };
 
+export type ProjectionSourceResult = {
+  category_id: string;
+  category_name: string;
+  unit: string;
+  price_per_unit_minor: number;
+  consumption_per_100km: number;
+  using_measured_consumption: boolean;
+  minor_per_km: number;
+  yearly_minor: number;
+};
+
 export type ProjectionResult = {
   points: ProjectionPoint[];
+  sources: ProjectionSourceResult[];
   fuel_minor_per_km: number;
   maintenance_minor_per_km: number;
   yearly_fuel_minor: number;
@@ -391,6 +459,7 @@ export type ProjectionResult = {
   using_measured_consumption: boolean;
   avg_consumption_l_per_100km: number;
 };
+
 
 export function defaultMaintenancePerKm(expenses: ExpenseRow[]): number {
   const km = trackedKm(expenses);
@@ -412,27 +481,53 @@ export function defaultAnnualKm(expenses: ExpenseRow[]): number {
   return Math.round(km / years);
 }
 
-export function defaultFuelPriceMinor(expenses: ExpenseRow[]): number {
+export function defaultFuelPriceMinorForCategory(
+  expenses: ExpenseRow[],
+  category_id: string,
+): number {
   const fuels = expenses
-    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
+    .filter(
+      (e) => e.role === "fuel" && e.category_id === category_id && e.quantity && e.quantity > 0,
+    )
     .sort((a, b) => b.date.localeCompare(a.date));
   if (fuels.length === 0) return 0;
-  return Math.round(fuels[0].amount_minor / (fuels[0].liters as number));
+  return Math.round(fuels[0].amount_minor / (fuels[0].quantity as number));
 }
 
 export function projection(
   vehicle: VehicleRow,
   expenses: ExpenseRow[],
+  categories: CategoryRow[],
   recurring: RecurringRow[],
   input: ProjectionInput,
 ): ProjectionResult {
-  const points = consumptionPoints(expenses);
-  const measured = averageConsumption(points);
-  const consumption = measured ?? 7.5;
-  const fuelPerKm = (consumption / 100) * input.fuel_price_per_liter_minor;
+  const series = consumptionSeries(expenses, categories);
+  const sourceResults: ProjectionSourceResult[] = input.sources.map((s) => {
+    const ser = series.find((x) => x.category_id === s.category_id);
+    const cat = categories.find((c) => c.id === s.category_id);
+    const unit = ser?.unit ?? cat?.unit ?? "l";
+    const measured = ser ? averageConsumption(ser.points) : null;
+    const consumption = measured ?? (unit === "l" ? 7.5 : 0);
+    const perKm = (consumption / 100) * s.price_per_unit_minor;
+    return {
+      category_id: s.category_id,
+      category_name: ser?.category_name ?? cat?.name ?? "",
+      unit,
+      price_per_unit_minor: s.price_per_unit_minor,
+      consumption_per_100km: consumption,
+      using_measured_consumption: measured != null,
+      minor_per_km: perKm,
+      yearly_minor: Math.round(perKm * input.annual_km),
+    };
+  });
+
+  const fuelPerKm = sourceResults.reduce((s, r) => s + r.minor_per_km, 0);
+  const measuredAll = sourceResults.length > 0 && sourceResults.every((r) => r.using_measured_consumption);
+  const consumptionAll = sourceResults.reduce((s, r) => s + r.consumption_per_100km, 0);
 
   const yearlyRecurring = recurring.reduce((s, r) => s + r.amount_minor_per_year, 0);
-  const yearlyFuel = Math.round(fuelPerKm * input.annual_km);
+  const yearlyFuel = sourceResults.reduce((s, r) => s + r.yearly_minor, 0);
+
   const yearlyMaintenance = Math.round(input.maintenance_minor_per_km * input.annual_km);
   const yearlyTotal = yearlyFuel + yearlyRecurring + yearlyMaintenance;
 
@@ -466,6 +561,7 @@ export function projection(
   }
   return {
     points: pts,
+    sources: sourceResults,
     fuel_minor_per_km: fuelPerKm,
     maintenance_minor_per_km: input.maintenance_minor_per_km,
     yearly_fuel_minor: yearlyFuel,
@@ -475,9 +571,10 @@ export function projection(
     total_horizon_minor: cum,
     avg_per_year_minor: input.horizon_years > 0 ? Math.round((cum - vehicle.purchase_price_minor) / input.horizon_years) : 0,
     crossover_year: crossover,
-    using_measured_consumption: measured != null,
-    avg_consumption_l_per_100km: consumption,
+    using_measured_consumption: measuredAll,
+    avg_consumption_l_per_100km: consumptionAll,
   };
+
 }
 
 

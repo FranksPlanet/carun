@@ -9,7 +9,7 @@ const CreateExpenseSchema = z.object({
   category_id: z.string().uuid(),
   amount_minor: z.number().int().min(0),
   currency: z.string().default("CZK"),
-  liters: z.number().min(0).max(1000).optional().nullable(),
+  quantity: z.number().min(0).max(1000).optional().nullable(),
   full_tank: z.boolean().optional().nullable(),
   tags: z.array(z.string().max(30)).max(10).default([]),
   note: z.string().max(500).optional().nullable(),
