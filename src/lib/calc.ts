@@ -481,27 +481,53 @@ export function defaultAnnualKm(expenses: ExpenseRow[]): number {
   return Math.round(km / years);
 }
 
-export function defaultFuelPriceMinor(expenses: ExpenseRow[]): number {
+export function defaultFuelPriceMinorForCategory(
+  expenses: ExpenseRow[],
+  category_id: string,
+): number {
   const fuels = expenses
-    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
+    .filter(
+      (e) => e.role === "fuel" && e.category_id === category_id && e.quantity && e.quantity > 0,
+    )
     .sort((a, b) => b.date.localeCompare(a.date));
   if (fuels.length === 0) return 0;
-  return Math.round(fuels[0].amount_minor / (fuels[0].liters as number));
+  return Math.round(fuels[0].amount_minor / (fuels[0].quantity as number));
 }
 
 export function projection(
   vehicle: VehicleRow,
   expenses: ExpenseRow[],
+  categories: CategoryRow[],
   recurring: RecurringRow[],
   input: ProjectionInput,
 ): ProjectionResult {
-  const points = consumptionPoints(expenses);
-  const measured = averageConsumption(points);
-  const consumption = measured ?? 7.5;
-  const fuelPerKm = (consumption / 100) * input.fuel_price_per_liter_minor;
+  const series = consumptionSeries(expenses, categories);
+  const sourceResults: ProjectionSourceResult[] = input.sources.map((s) => {
+    const ser = series.find((x) => x.category_id === s.category_id);
+    const cat = categories.find((c) => c.id === s.category_id);
+    const unit = ser?.unit ?? cat?.unit ?? "l";
+    const measured = ser ? averageConsumption(ser.points) : null;
+    const consumption = measured ?? (unit === "l" ? 7.5 : 0);
+    const perKm = (consumption / 100) * s.price_per_unit_minor;
+    return {
+      category_id: s.category_id,
+      category_name: ser?.category_name ?? cat?.name ?? "",
+      unit,
+      price_per_unit_minor: s.price_per_unit_minor,
+      consumption_per_100km: consumption,
+      using_measured_consumption: measured != null,
+      minor_per_km: perKm,
+      yearly_minor: Math.round(perKm * input.annual_km),
+    };
+  });
+
+  const fuelPerKm = sourceResults.reduce((s, r) => s + r.minor_per_km, 0);
+  const measuredAll = sourceResults.length > 0 && sourceResults.every((r) => r.using_measured_consumption);
+  const consumptionAll = sourceResults.reduce((s, r) => s + r.consumption_per_100km, 0);
 
   const yearlyRecurring = recurring.reduce((s, r) => s + r.amount_minor_per_year, 0);
-  const yearlyFuel = Math.round(fuelPerKm * input.annual_km);
+  const yearlyFuel = sourceResults.reduce((s, r) => s + r.yearly_minor, 0);
+
   const yearlyMaintenance = Math.round(input.maintenance_minor_per_km * input.annual_km);
   const yearlyTotal = yearlyFuel + yearlyRecurring + yearlyMaintenance;
 
