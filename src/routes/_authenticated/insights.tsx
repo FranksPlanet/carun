@@ -202,8 +202,6 @@ function InsightsPage() {
     );
   }
 
-  const hasConsumption = points.length >= 1;
-  const hasPrice = priceSeries.length >= 1;
 
   return (
     <div className="space-y-6">
