@@ -12,10 +12,20 @@ export type ExpenseRow = {
   // identify fuel expenses by `role === 'fuel'`, never by name.
   role: CategoryRole;
   amount_minor: number;
-  liters: number | null;
+  // Amount purchased, in the unit of its category (litres, kWh, kg, …).
+  quantity: number | null;
   full_tank: boolean | null;
   tags: string[];
 };
+
+export type CategoryRow = {
+  id: string;
+  name: string;
+  role: CategoryRole;
+  unit: string | null;
+  sort_order: number;
+};
+
 
 export type RecurringRow = {
   amount_minor_per_year: number;
