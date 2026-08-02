@@ -470,6 +470,7 @@ function InsightsPage() {
         <ProjectionSection
           vehicle={vehicle}
           expenses={expenses}
+          categories={categories}
           recurring={recurring}
           settings={settings}
           moneySettings={moneySettings}
@@ -484,6 +485,7 @@ function InsightsPage() {
 type ProjectionProps = {
   vehicle: any;
   expenses: ExpenseRow[];
+  categories: CategoryRow[];
   recurring: { amount_minor_per_year: number }[];
   settings: ProfileSettings;
   moneySettings: ProfileSettings;
@@ -495,19 +497,37 @@ type ProjectionProps = {
 function ProjectionSection({
   vehicle,
   expenses,
+  categories,
   recurring,
   settings,
   moneySettings,
   currency,
 }: ProjectionProps) {
   const defAnnualKm = useMemo(() => defaultAnnualKm(expenses), [expenses]);
-  const defFuelMinor = useMemo(() => defaultFuelPriceMinor(expenses), [expenses]);
   const defMaintPerKm = useMemo(() => defaultMaintenancePerKm(expenses), [expenses]);
 
-  const [annualKm, setAnnualKm] = useState<number>(defAnnualKm);
-  const [fuelPriceMajor, setFuelPriceMajor] = useState<number>(
-    moneyMinorToMajor(defFuelMinor || moneyMajorToMinor(40, currency), currency),
+  // One price control per fuel-role category that actually has fill-ups.
+  const fuelSeries = useMemo(
+    () => consumptionSeries(expenses, categories as any),
+    [expenses, categories],
   );
+  const defaultPricesMinor = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const s of fuelSeries) {
+      m[s.category_id] =
+        defaultFuelPriceMinorForCategory(expenses, s.category_id) ||
+        moneyMajorToMinor(40, currency);
+    }
+    return m;
+  }, [fuelSeries, expenses, currency]);
+
+  const [annualKm, setAnnualKm] = useState<number>(defAnnualKm);
+  const [pricesMajor, setPricesMajor] = useState<Record<string, number>>(() => {
+    const m: Record<string, number> = {};
+    for (const k of Object.keys(defaultPricesMinor))
+      m[k] = moneyMinorToMajor(defaultPricesMinor[k], currency);
+    return m;
+  });
   const [horizon, setHorizon] = useState<number>(5);
   const [maintMajorPerKm, setMaintMajorPerKm] = useState<number>(
     moneyMinorToMajor(defMaintPerKm, currency),
@@ -518,22 +538,28 @@ function ProjectionSection({
     setAnnualKm(defAnnualKm);
   }, [defAnnualKm, vehicle?.id]);
   useEffect(() => {
-    setFuelPriceMajor(
-      moneyMinorToMajor(defFuelMinor || moneyMajorToMinor(40, currency), currency),
-    );
-  }, [defFuelMinor, currency, vehicle?.id]);
+    const m: Record<string, number> = {};
+    for (const k of Object.keys(defaultPricesMinor))
+      m[k] = moneyMinorToMajor(defaultPricesMinor[k], currency);
+    setPricesMajor(m);
+  }, [defaultPricesMinor, currency, vehicle?.id]);
   useEffect(() => {
     setMaintMajorPerKm(moneyMinorToMajor(defMaintPerKm, currency));
   }, [defMaintPerKm, currency, vehicle?.id]);
 
-  const fuelPriceMinor = moneyMajorToMinor(fuelPriceMajor, currency);
   const maintMinorPerKm = moneyMajorToMinor(maintMajorPerKm, currency);
 
-  const fuelMinPct = 0.5;
-  const fuelMaxPct = 1.5;
-  const fuelSliderBaseMajor = moneyMinorToMajor(
-    defFuelMinor || moneyMajorToMinor(40, currency),
-    currency,
+  const sourcesInput = useMemo(
+    () =>
+      fuelSeries.map((s) => ({
+        category_id: s.category_id,
+        price_per_unit_minor: moneyMajorToMinor(
+          pricesMajor[s.category_id] ??
+            moneyMinorToMajor(defaultPricesMinor[s.category_id] ?? 0, currency),
+          currency,
+        ),
+      })),
+    [fuelSeries, pricesMajor, defaultPricesMinor, currency],
   );
 
   const result = useMemo(
@@ -545,15 +571,16 @@ function ProjectionSection({
           purchase_price_minor: vehicle.purchase_price_minor,
         },
         expenses,
+        categories as any,
         recurring,
         {
           annual_km: annualKm,
-          fuel_price_per_liter_minor: fuelPriceMinor,
+          sources: sourcesInput,
           horizon_years: horizon,
           maintenance_minor_per_km: maintMinorPerKm,
         },
       ),
-    [vehicle, expenses, recurring, annualKm, fuelPriceMinor, horizon, maintMinorPerKm],
+    [vehicle, expenses, categories, recurring, annualKm, sourcesInput, horizon, maintMinorPerKm],
   );
 
   const purchaseKnown = vehicle.purchase_price_minor > 0;
@@ -575,9 +602,18 @@ function ProjectionSection({
       <div className="flex items-baseline justify-between gap-2 flex-wrap mb-3">
         <div className="kpi-label">Projection</div>
         <div className="text-xs text-muted-foreground">
-          {result.using_measured_consumption
-            ? `Using measured ${formatConsumption(result.avg_consumption_l_per_100km, settings)}`
-            : `Using default 7.5 l/100km (log more fuel for accuracy)`}
+          {result.sources.length === 0
+            ? "Log a fuel fill-up for a consumption-based estimate"
+            : result.sources
+                .map(
+                  (s) =>
+                    `${s.category_name}: ${formatConsumptionUnit(
+                      s.consumption_per_100km,
+                      s.unit,
+                      settings,
+                    )}${s.using_measured_consumption ? "" : " (default)"}`,
+                )
+                .join(" · ")}
         </div>
       </div>
 
@@ -597,18 +633,35 @@ function ProjectionSection({
           />
         </SliderRow>
 
-        <SliderRow
-          label="Fuel price"
-          value={formatPricePerLiter(fuelPriceMinor, moneySettings)}
-        >
-          <Slider
-            min={Math.max(0.01, fuelSliderBaseMajor * fuelMinPct)}
-            max={Math.max(0.02, fuelSliderBaseMajor * fuelMaxPct)}
-            step={0.01}
-            value={[fuelPriceMajor]}
-            onValueChange={(v) => setFuelPriceMajor(v[0])}
-          />
-        </SliderRow>
+        {fuelSeries.map((fs) => {
+          const baseMajor = moneyMinorToMajor(
+            defaultPricesMinor[fs.category_id] ?? moneyMajorToMinor(40, currency),
+            currency,
+          );
+          const valMajor = pricesMajor[fs.category_id] ?? baseMajor;
+          return (
+            <SliderRow
+              key={fs.category_id}
+              label={`${fs.category_name} price`}
+              value={formatPricePerUnit(
+                moneyMajorToMinor(valMajor, currency),
+                fs.unit,
+                moneySettings,
+              )}
+            >
+              <Slider
+                min={Math.max(0.01, baseMajor * 0.5)}
+                max={Math.max(0.02, baseMajor * 1.5)}
+                step={0.01}
+                value={[valMajor]}
+                onValueChange={(v) =>
+                  setPricesMajor((prev) => ({ ...prev, [fs.category_id]: v[0] }))
+                }
+                aria-label={`${fs.category_name} price`}
+              />
+            </SliderRow>
+          );
+        })}
 
         <SliderRow label="Horizon" value={`${horizon} yr`}>
           <Slider
