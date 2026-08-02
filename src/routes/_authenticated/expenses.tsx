@@ -84,7 +84,7 @@ type FormState = {
   odometer: string;
   category_id: string;
   amount: string;
-  liters: string;
+  quantity: string;
   full_tank: boolean;
   tags: string[];
   note: string;
@@ -95,7 +95,7 @@ const emptyForm = (categoryId: string): FormState => ({
   odometer: "",
   category_id: categoryId,
   amount: "",
-  liters: "",
+  quantity: "",
   full_tank: true,
   tags: [],
   note: "",
@@ -209,7 +209,7 @@ function ExpensesPage() {
         odometer: vehicle.current_odometer_km ? String(vehicle.current_odometer_km) : "",
         date: res.date || new Date().toISOString().slice(0, 10),
         amount: res.total != null ? String(res.total) : "",
-        liters: res.liters != null ? String(res.liters) : "",
+        quantity: res.liters != null ? String(res.liters) : "",
         note: res.station ?? "",
       });
       setDialogOpen(true);
@@ -235,7 +235,7 @@ function ExpensesPage() {
       const amount_minor = moneyMajorToMinor(parseLocalNumber(f.amount), currency);
       const odometer_km = Math.round(parseLocalNumber(f.odometer));
       const isFuel = categoryById(categories, f.category_id)?.role === "fuel";
-      const liters = isFuel && f.liters ? parseLocalNumber(f.liters) : null;
+      const quantity = isFuel && f.quantity ? parseLocalNumber(f.quantity) : null;
       const payload = {
         vehicle_id: vehicle!.id,
         date: f.date,
@@ -243,7 +243,7 @@ function ExpensesPage() {
         category_id: f.category_id,
         amount_minor,
         currency,
-        liters,
+        quantity,
         full_tank: isFuel ? f.full_tank : null,
         tags: isFuel ? f.tags : [],
         note: f.note || null,
@@ -305,7 +305,7 @@ function ExpensesPage() {
       odometer: String(e.odometer_km),
       category_id: e.category_id,
       amount: String(moneyMinorToMajor(e.amount_minor, currency)),
-      liters: e.liters != null ? String(e.liters) : "",
+      quantity: e.quantity != null ? String(e.quantity) : "",
       full_tank: !!e.full_tank,
       tags: e.tags ?? [],
       note: (e as any).note ?? "",
@@ -320,7 +320,7 @@ function ExpensesPage() {
       "category",
       "amount",
       "currency",
-      "liters",
+      "quantity",
       "full_tank",
       "tags",
       "note",
@@ -331,7 +331,7 @@ function ExpensesPage() {
       categoryById(categories, e.category_id)?.name ?? "",
       moneyMinorToMajor(e.amount_minor, currency).toFixed(2),
       currency,
-      e.liters ?? "",
+      e.quantity ?? "",
       e.full_tank == null ? "" : e.full_tank ? "true" : "false",
       (e.tags ?? []).join("|"),
       (((e as any).note ?? "") as string).replace(/[\r\n]+/g, " "),
@@ -379,7 +379,7 @@ function ExpensesPage() {
   }
 
   const amountNum = parseLocalNumber(form.amount);
-  const litersNum = parseLocalNumber(form.liters);
+  const litersNum = parseLocalNumber(form.quantity);
   const pricePerLiter =
     selectedIsFuel && isFinite(amountNum) && isFinite(litersNum) && litersNum > 0
       ? amountNum / litersNum
@@ -668,9 +668,9 @@ function ExpensesPage() {
                         · {formatDistance(e.odometer_km, settings)}
                       </span>
                     </div>
-                    {isFuel && e.liters != null && (
+                    {isFuel && e.quantity != null && (
                       <div className="text-xs text-muted-foreground">
-                        {formatVolume(e.liters, settings)}
+                        {formatVolume(e.quantity, settings)}
                         {cons != null ? ` · ${formatConsumption(cons, settings)}` : ""}
                       </div>
                     )}
@@ -778,12 +778,12 @@ function ExpensesPage() {
             {selectedIsFuel && (
               <>
                 <div>
-                  <Label htmlFor="lt">Liters</Label>
+                  <Label htmlFor="lt">Quantity</Label>
                   <Input
                     id="lt"
                     inputMode="decimal"
-                    value={form.liters}
-                    onChange={(e) => setForm({ ...form, liters: e.target.value })}
+                    value={form.quantity}
+                    onChange={(e) => setForm({ ...form, quantity: e.target.value })}
                   />
                   {pricePerLiter != null && (
                     <div className="text-xs text-muted-foreground mt-1">
@@ -840,7 +840,7 @@ function ExpensesPage() {
           {(() => {
             const amt = parseLocalNumber(form.amount);
             const odo = parseLocalNumber(form.odometer);
-            const lt = parseLocalNumber(form.liters);
+            const lt = parseLocalNumber(form.quantity);
             const invalid =
               !form.date ||
               !form.category_id ||
