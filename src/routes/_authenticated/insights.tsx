@@ -22,14 +22,14 @@ import { getProfile } from "@/lib/profile.functions";
 import { useCategories, type CategoryRow } from "@/lib/categories";
 
 import {
-  consumptionPoints,
+  consumptionSeries,
   segmentedAverages,
   averageConsumption,
-  pricePerLiterSeries,
+  pricePerUnitSeries,
   lifetimeBreakdown,
   projection,
   defaultAnnualKm,
-  defaultFuelPriceMinor,
+  defaultFuelPriceMinorForCategory,
   defaultMaintenancePerKm,
   type ExpenseRow,
 } from "@/lib/calc";
@@ -40,6 +40,8 @@ import {
   formatDistance,
   formatMoney,
   formatPricePerLiter,
+  formatPricePerUnit,
+  formatConsumptionUnit,
   moneyMajorToMinor,
   moneyMinorToMajor,
   type ProfileSettings,
@@ -129,9 +131,10 @@ function InsightsPage() {
   const repairs = (repairsQ.data ?? []) as { amount_minor: number }[];
 
 
-  const points = useMemo(() => consumptionPoints(expenses), [expenses]);
-  const segAvg = useMemo(() => segmentedAverages(points), [points]);
-  const overallAvg = useMemo(() => averageConsumption(points), [points]);
+  const fuelSeries = useMemo(
+    () => consumptionSeries(expenses, categories as any),
+    [expenses, categories],
+  );
 
   const lifetime = useMemo(
     () =>
@@ -150,25 +153,28 @@ function InsightsPage() {
     [vehicle, expenses, recurring, repairs],
   );
 
-  const consChartData = useMemo(
+  // One bundle of derived chart data per fuel-role category.
+  const seriesViews = useMemo(
     () =>
-      points.map((p) => ({
-        date: p.date,
-        l_per_100km: Number(p.l_per_100km.toFixed(2)),
-        spike: p.is_spike ? Number(p.l_per_100km.toFixed(2)) : null,
-        is_loaded: p.is_loaded,
+      fuelSeries.map((s) => ({
+        category_id: s.category_id,
+        name: s.category_name,
+        unit: s.unit,
+        segAvg: segmentedAverages(s.points),
+        overallAvg: averageConsumption(s.points),
+        consChartData: s.points.map((p) => ({
+          date: p.date,
+          per_100km: Number(p.per_100km.toFixed(2)),
+          spike: p.is_spike ? Number(p.per_100km.toFixed(2)) : null,
+          is_loaded: p.is_loaded,
+        })),
+        priceSeries: pricePerUnitSeries(expenses, s.category_id).map((p) => ({
+          date: p.date,
+          price_major: moneyMinorToMajor(p.price, currency),
+          price_minor: p.price,
+        })),
       })),
-    [points],
-  );
-
-  const priceSeries = useMemo(
-    () =>
-      pricePerLiterSeries(expenses).map((p) => ({
-        date: p.date,
-        price_major: moneyMinorToMajor(p.price, currency),
-        price_minor: p.price,
-      })),
-    [expenses, currency],
+    [fuelSeries, expenses, currency],
   );
 
   if (vehiclesQ.isLoading) {
@@ -220,127 +226,146 @@ function InsightsPage() {
         </div>
       )}
 
-      {/* Segmented averages */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="kpi-card">
-          <div className="kpi-label">{t.kpi.cleanAvg}</div>
-          <KpiValue value={formatConsumption(segAvg.clean, settings)} />
-          <div className="text-xs text-muted-foreground mt-1">Untagged fills</div>
+      {seriesViews.length === 0 && (
+        <div id="consumption" className="kpi-card">
+          <div className="kpi-label mb-2">Consumption</div>
+          <p className="text-sm text-muted-foreground">{t.empty.needFuel}</p>
         </div>
-        <div className="kpi-card">
-          <div className="kpi-label">{t.kpi.loadedAvg}</div>
-          <KpiValue value={formatConsumption(segAvg.loaded, settings)} />
-          <div className="text-xs text-muted-foreground mt-1">
-            Towing · Fully loaded · Roof box
+      )}
+
+      {seriesViews.map((sv, idx) => (
+        <div key={sv.category_id} className="space-y-6">
+          {/* Segmented averages */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="kpi-card">
+              <div className="kpi-label">{t.kpi.cleanAvg}</div>
+              <KpiValue value={formatConsumptionUnit(sv.segAvg.clean, sv.unit, settings)} />
+              <div className="text-xs text-muted-foreground mt-1">Untagged fills</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-label">{t.kpi.loadedAvg}</div>
+              <KpiValue value={formatConsumptionUnit(sv.segAvg.loaded, sv.unit, settings)} />
+              <div className="text-xs text-muted-foreground mt-1">
+                Towing · Fully loaded · Roof box
+              </div>
+            </div>
+          </div>
+
+          {/* Consumption trend */}
+          <div id={idx === 0 ? "consumption" : undefined} className="kpi-card">
+            <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
+              <div className="kpi-label">
+                {sv.name} consumption ({sv.unit} / 100 km)
+              </div>
+              {sv.overallAvg != null && (
+                <div className="text-xs text-muted-foreground">
+                  Avg {formatConsumptionUnit(sv.overallAvg, sv.unit, settings)}
+                </div>
+              )}
+            </div>
+            <div className="h-64">
+              {sv.consChartData.length === 0 ? (
+                <div className="h-full grid place-items-center text-muted-foreground text-sm text-center px-6">
+                  {t.empty.needFuel}
+                </div>
+              ) : (
+                <ResponsiveContainer>
+                  <ComposedChart data={sv.consChartData}>
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                      domain={["auto", "auto"]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
+                      }}
+                      formatter={(v: any) =>
+                        v == null ? "—" : `${v} ${sv.unit} / 100 km`
+                      }
+                    />
+                    {sv.overallAvg != null && (
+                      <ReferenceLine
+                        y={Number(sv.overallAvg.toFixed(2))}
+                        stroke="var(--color-muted-foreground)"
+                        strokeDasharray="3 3"
+                        label={{
+                          value: "avg",
+                          fill: "var(--color-muted-foreground)",
+                          fontSize: 10,
+                          position: "right",
+                        }}
+                      />
+                    )}
+                    <Line
+                      type="monotone"
+                      dataKey="per_100km"
+                      stroke="var(--color-primary)"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: "var(--color-primary)" }}
+                      activeDot={{ r: 5 }}
+                    />
+                    <Scatter dataKey="spike" fill="var(--color-destructive)" shape="circle" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Tagged loads (towing, roof box, fully loaded) are expected to read higher. An
+              untagged spike — highlighted — may be worth a check.
+            </p>
+          </div>
+
+          {/* Price paid */}
+          <div className="kpi-card">
+            <div className="kpi-label mb-2">{sv.name} price paid</div>
+            <div className="h-56">
+              {sv.priceSeries.length === 0 ? (
+                <div className="h-full grid place-items-center text-muted-foreground text-sm text-center px-6">
+                  {t.empty.needFuel}
+                </div>
+              ) : (
+                <ResponsiveContainer>
+                  <LineChart data={sv.priceSeries}>
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                      domain={["auto", "auto"]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
+                      }}
+                      formatter={(_v: any, _n: any, item: any) =>
+                        formatPricePerUnit(
+                          item?.payload?.price_minor ?? 0,
+                          sv.unit,
+                          moneySettings,
+                        )
+                      }
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="price_major"
+                      stroke="var(--color-primary)"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: "var(--color-primary)" }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Consumption trend */}
-      <div id="consumption" className="kpi-card">
-        <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
-          <div className="kpi-label">Consumption trend (l/100km)</div>
-          {overallAvg != null && (
-            <div className="text-xs text-muted-foreground">
-              Avg {formatConsumption(overallAvg, settings)}
-            </div>
-          )}
-        </div>
-        <div className="h-64">
-          {!hasConsumption ? (
-            <div className="h-full grid place-items-center text-muted-foreground text-sm text-center px-6">
-              {t.empty.needFuel}
-            </div>
-          ) : (
-            <ResponsiveContainer>
-              <ComposedChart data={consChartData}>
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
-                />
-                <YAxis
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
-                  domain={["auto", "auto"]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                  }}
-                  formatter={(v: any) => (v == null ? "—" : `${v} l/100km`)}
-                />
-                {overallAvg != null && (
-                  <ReferenceLine
-                    y={Number(overallAvg.toFixed(2))}
-                    stroke="var(--color-muted-foreground)"
-                    strokeDasharray="3 3"
-                    label={{
-                      value: "avg",
-                      fill: "var(--color-muted-foreground)",
-                      fontSize: 10,
-                      position: "right",
-                    }}
-                  />
-                )}
-                <Line
-                  type="monotone"
-                  dataKey="l_per_100km"
-                  stroke="var(--color-primary)"
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: "var(--color-primary)" }}
-                  activeDot={{ r: 5 }}
-                />
-                <Scatter dataKey="spike" fill="var(--color-destructive)" shape="circle" />
-              </ComposedChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground mt-3">
-          Tagged loads (towing, roof box, fully loaded) are expected to read higher. An
-          untagged spike — highlighted — may be worth a check.
-        </p>
-      </div>
-
-      {/* Fuel price paid */}
-      <div className="kpi-card">
-        <div className="kpi-label mb-2">Fuel price paid</div>
-        <div className="h-56">
-          {!hasPrice ? (
-            <div className="h-full grid place-items-center text-muted-foreground text-sm text-center px-6">
-              {t.empty.needFuel}
-            </div>
-          ) : (
-            <ResponsiveContainer>
-              <LineChart data={priceSeries}>
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
-                />
-                <YAxis
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
-                  domain={["auto", "auto"]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                  }}
-                  formatter={(_v: any, _n: any, item: any) =>
-                    formatPricePerLiter(item?.payload?.price_minor ?? 0, moneySettings)
-                  }
-                />
-                <Line
-                  type="monotone"
-                  dataKey="price_major"
-                  stroke="var(--color-primary)"
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: "var(--color-primary)" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
+      ))}
 
       {/* Lifetime cost */}
       {lifetime && (
