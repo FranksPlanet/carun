@@ -43,14 +43,18 @@ type Draft = {
   color: string;
   icon: string;
   role: CategoryRole;
+  unit: string;
   description: string;
 };
+
+const UNIT_PRESETS = ["l", "kWh", "kg"];
 
 const emptyDraft = (): Draft => ({
   name: "",
   color: COLOR_PALETTE[0],
   icon: "Tag",
   role: "other",
+  unit: "l",
   description: "",
 });
 
@@ -80,6 +84,7 @@ export function CategoriesManager() {
         color: d.color,
         icon: d.icon,
         role: d.role,
+        unit: d.role === "fuel" ? d.unit.trim() || "l" : null,
         description: d.description.trim() || null,
       };
       if (d.id) {
@@ -135,6 +140,7 @@ export function CategoriesManager() {
       color: c.color,
       icon: c.icon,
       role: c.role,
+      unit: c.unit ?? "l",
       description: c.description ?? "",
     });
     setEditorOpen(true);
@@ -290,6 +296,35 @@ export function CategoriesManager() {
                 </p>
               )}
             </div>
+
+            {draft.role === "fuel" && (
+              <div>
+                <Label htmlFor="cat-unit">Unit</Label>
+                <div className="flex flex-wrap gap-2 mt-1 mb-2">
+                  {UNIT_PRESETS.map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      className="tag-chip"
+                      data-on={draft.unit === u}
+                      onClick={() => setDraft({ ...draft, unit: u })}
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+                <Input
+                  id="cat-unit"
+                  value={draft.unit}
+                  maxLength={12}
+                  onChange={(e) => setDraft({ ...draft, unit: e.target.value })}
+                  placeholder="l"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  What you buy this in — drives consumption maths (per 100 km).
+                </p>
+              </div>
+            )}
 
             <div>
               <Label>Colour</Label>
