@@ -136,9 +136,11 @@ export function categoryCostPerKm(expenses: ExpenseRow[]): Record<CategoryRole, 
 export type ConsumptionPoint = {
   date: string;
   odometer_km: number;
+  // Quantity consumed over the segment, in the category's unit.
   liters: number;
   distance_km: number;
-  l_per_100km: number;
+  // Unit-agnostic: quantity per 100 km, same formula as before.
+  per_100km: number;
   price_per_liter: number;
   tags: string[];
   is_loaded: boolean;
@@ -146,29 +148,36 @@ export type ConsumptionPoint = {
   baseline: number | null;
 };
 
-export function consumptionPoints(expenses: ExpenseRow[]): ConsumptionPoint[] {
-  const fuels = expenses
-    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
-    .sort((a, b) => a.odometer_km - b.odometer_km);
+export type FuelSeries = {
+  category_id: string;
+  category_name: string;
+  unit: string;
+  points: ConsumptionPoint[];
+};
+
+// Full-tank-to-full-tank consumption points for a single set of fuel expenses
+// (already scoped to one category).
+function pointsForCategory(fuelExpenses: ExpenseRow[]): ConsumptionPoint[] {
+  const fuels = [...fuelExpenses].sort((a, b) => a.odometer_km - b.odometer_km);
   const points: ConsumptionPoint[] = [];
   let lastFullIdx = -1;
   for (let i = 0; i < fuels.length; i++) {
     if (!fuels[i].full_tank) continue;
     if (lastFullIdx >= 0) {
-      // sum liters from (lastFullIdx, i] excluding the lastFullIdx fillup itself
-      let liters = 0;
-      for (let k = lastFullIdx + 1; k <= i; k++) liters += fuels[k].liters ?? 0;
+      // sum quantity from (lastFullIdx, i] excluding the lastFullIdx fillup itself
+      let qty = 0;
+      for (let k = lastFullIdx + 1; k <= i; k++) qty += fuels[k].quantity ?? 0;
       const dist = fuels[i].odometer_km - fuels[lastFullIdx].odometer_km;
-      const lp = fuels[i].liters ?? 0;
+      const lp = fuels[i].quantity ?? 0;
       const amt = fuels[i].amount_minor;
-      if (dist > 0 && liters > 0) {
-        const consumption = (liters / dist) * 100;
+      if (dist > 0 && qty > 0) {
+        const consumption = (qty / dist) * 100;
         points.push({
           date: fuels[i].date,
           odometer_km: fuels[i].odometer_km,
-          liters,
+          liters: qty,
           distance_km: dist,
-          l_per_100km: consumption,
+          per_100km: consumption,
           price_per_liter: lp > 0 ? amt / lp : 0,
           tags: fuels[i].tags,
           is_loaded: fuels[i].tags.some((t) => LOADED_TAGS.has(t)),
@@ -183,32 +192,63 @@ export function consumptionPoints(expenses: ExpenseRow[]): ConsumptionPoint[] {
   for (let i = 0; i < points.length; i++) {
     const prior = points.slice(Math.max(0, i - 5), i);
     if (prior.length === 0) continue;
-    const baseline = prior.reduce((s, p) => s + p.l_per_100km, 0) / prior.length;
+    const baseline = prior.reduce((s, p) => s + p.per_100km, 0) / prior.length;
     points[i].baseline = baseline;
-    if (points[i].l_per_100km > baseline * 1.15) points[i].is_spike = true;
+    if (points[i].per_100km > baseline * 1.15) points[i].is_spike = true;
   }
   return points;
+}
+
+// One independent consumption series per fuel-role category that has expenses,
+// ordered by the category's sort_order.
+export function consumptionSeries(
+  expenses: ExpenseRow[],
+  categories: CategoryRow[],
+): FuelSeries[] {
+  const fuelCats = categories
+    .filter((c) => c.role === "fuel")
+    .sort((a, b) => a.sort_order - b.sort_order);
+  const out: FuelSeries[] = [];
+  for (const cat of fuelCats) {
+    const rows = expenses.filter(
+      (e) => e.role === "fuel" && e.category_id === cat.id && e.quantity && e.quantity > 0,
+    );
+    if (rows.length === 0) continue;
+    out.push({
+      category_id: cat.id,
+      category_name: cat.name,
+      unit: cat.unit ?? "l",
+      points: pointsForCategory(rows),
+    });
+  }
+  return out;
 }
 
 export function segmentedAverages(points: ConsumptionPoint[]): { clean: number | null; loaded: number | null } {
   const clean = points.filter((p) => !p.is_loaded);
   const loaded = points.filter((p) => p.is_loaded);
   const avg = (xs: ConsumptionPoint[]) =>
-    xs.length === 0 ? null : xs.reduce((s, p) => s + p.l_per_100km, 0) / xs.length;
+    xs.length === 0 ? null : xs.reduce((s, p) => s + p.per_100km, 0) / xs.length;
   return { clean: avg(clean), loaded: avg(loaded) };
 }
 
 export function averageConsumption(points: ConsumptionPoint[]): number | null {
   if (points.length === 0) return null;
-  return points.reduce((s, p) => s + p.l_per_100km, 0) / points.length;
+  return points.reduce((s, p) => s + p.per_100km, 0) / points.length;
 }
 
-export function pricePerLiterSeries(expenses: ExpenseRow[]): { date: string; price: number }[] {
+export function pricePerUnitSeries(
+  expenses: ExpenseRow[],
+  category_id: string,
+): { date: string; price: number }[] {
   return expenses
-    .filter((e) => e.role === "fuel" && e.liters && e.liters > 0)
+    .filter(
+      (e) => e.role === "fuel" && e.category_id === category_id && e.quantity && e.quantity > 0,
+    )
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((e) => ({ date: e.date, price: e.amount_minor / (e.liters as number) }));
+    .map((e) => ({ date: e.date, price: e.amount_minor / (e.quantity as number) }));
 }
+
 
 export function cumulativeSpend(expenses: ExpenseRow[]): { date: string; total: number }[] {
   const sorted = [...expenses].sort((a, b) => a.date.localeCompare(b.date));
