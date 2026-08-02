@@ -413,9 +413,15 @@ export function lifetimeBreakdown(
   };
 }
 
+export type ProjectionSourceInput = {
+  category_id: string;
+  price_per_unit_minor: number;
+};
+
 export type ProjectionInput = {
   annual_km: number;
-  fuel_price_per_liter_minor: number; // price in currency minor units per liter
+  // One entry per active fuel-role category for the vehicle.
+  sources: ProjectionSourceInput[];
   horizon_years: number;
   maintenance_minor_per_km: number; // user-adjustable rate for service + other
 };
@@ -427,8 +433,20 @@ export type ProjectionPoint = {
   purchase_price_minor: number;
 };
 
+export type ProjectionSourceResult = {
+  category_id: string;
+  category_name: string;
+  unit: string;
+  price_per_unit_minor: number;
+  consumption_per_100km: number;
+  using_measured_consumption: boolean;
+  minor_per_km: number;
+  yearly_minor: number;
+};
+
 export type ProjectionResult = {
   points: ProjectionPoint[];
+  sources: ProjectionSourceResult[];
   fuel_minor_per_km: number;
   maintenance_minor_per_km: number;
   yearly_fuel_minor: number;
@@ -441,6 +459,7 @@ export type ProjectionResult = {
   using_measured_consumption: boolean;
   avg_consumption_l_per_100km: number;
 };
+
 
 export function defaultMaintenancePerKm(expenses: ExpenseRow[]): number {
   const km = trackedKm(expenses);
