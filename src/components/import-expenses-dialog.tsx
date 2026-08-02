@@ -20,7 +20,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { bulkCreateExpenses } from "@/lib/expenses.functions";
 import { moneyMajorToMinor, parseLocalNumber } from "@/lib/format";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import Papa from "papaparse";
 import {
   useCategories,
   findCategoryByName,
@@ -66,14 +67,16 @@ function resolveCategory(
 
 function normalizeDate(v: any): string | null {
   if (v == null || v === "") return null;
-  // Excel serial date
+  // ExcelJS hands back real Date objects for date-formatted cells.
+  if (v instanceof Date) {
+    if (isNaN(+v)) return null;
+    return v.toISOString().slice(0, 10);
+  }
+  // Bare Excel serial date (cell wasn't date-formatted in the source file).
+  // Date.UTC(1899, 11, 30) reproduces the 1900-leap-year-bug-compatible epoch.
   if (typeof v === "number" && isFinite(v)) {
-    const d = XLSX.SSF.parse_date_code(v);
-    if (d) {
-      const mm = String(d.m).padStart(2, "0");
-      const dd = String(d.d).padStart(2, "0");
-      return `${d.y}-${mm}-${dd}`;
-    }
+    const d = new Date(Date.UTC(1899, 11, 30) + v * 86400000);
+    if (!isNaN(+d)) return d.toISOString().slice(0, 10);
   }
   const s = String(v).trim();
   // YYYY-MM-DD already
