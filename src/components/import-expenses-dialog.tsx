@@ -196,6 +196,10 @@ export function ImportExpensesDialog({
       toast.error("Apple .numbers isn't supported. Please export to CSV or XLSX.");
       return;
     }
+    if (lower.endsWith(".xls") && !lower.endsWith(".xlsx")) {
+      toast.error("Old-style .xls isn't supported — please re-save as .xlsx or export to CSV.");
+      return;
+    }
     try {
       const json: Record<string, any>[] = lower.endsWith(".csv")
         ? await parseCsv(file)
@@ -323,7 +327,7 @@ export function ImportExpensesDialog({
               <span className="sr-only">Choose file</span>
               <input
                 type="file"
-                accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) handleFile(f);
