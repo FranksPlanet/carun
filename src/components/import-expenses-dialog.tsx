@@ -20,7 +20,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { bulkCreateExpenses } from "@/lib/expenses.functions";
 import { moneyMajorToMinor, parseLocalNumber } from "@/lib/format";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import Papa from "papaparse";
 import {
   useCategories,
   findCategoryByName,
@@ -66,14 +67,16 @@ function resolveCategory(
 
 function normalizeDate(v: any): string | null {
   if (v == null || v === "") return null;
-  // Excel serial date
+  // ExcelJS hands back real Date objects for date-formatted cells.
+  if (v instanceof Date) {
+    if (isNaN(+v)) return null;
+    return v.toISOString().slice(0, 10);
+  }
+  // Bare Excel serial date (cell wasn't date-formatted in the source file).
+  // Date.UTC(1899, 11, 30) reproduces the 1900-leap-year-bug-compatible epoch.
   if (typeof v === "number" && isFinite(v)) {
-    const d = XLSX.SSF.parse_date_code(v);
-    if (d) {
-      const mm = String(d.m).padStart(2, "0");
-      const dd = String(d.d).padStart(2, "0");
-      return `${d.y}-${mm}-${dd}`;
-    }
+    const d = new Date(Date.UTC(1899, 11, 30) + v * 86400000);
+    if (!isNaN(+d)) return d.toISOString().slice(0, 10);
   }
   const s = String(v).trim();
   // YYYY-MM-DD already
@@ -94,6 +97,60 @@ function normalizeNumber(v: any): number {
   if (typeof v === "number") return v;
   return parseLocalNumber(String(v ?? ""));
 }
+
+// Flatten an ExcelJS cell value to the primitive shape the rest of the
+// component expects. Empty/null cells become "" (matching SheetJS defval: "").
+function cellValue(v: any): any {
+  if (v == null) return "";
+  if (v instanceof Date) return v;
+  if (typeof v === "object") {
+    if (Array.isArray(v.richText)) return v.richText.map((t: any) => t.text).join("");
+    if ("result" in v) return cellValue(v.result); // formula cell
+    if ("text" in v) return v.text; // hyperlink cell
+    if ("error" in v) return "";
+    return String(v);
+  }
+  return v;
+}
+
+async function parseCsv(file: File): Promise<Record<string, any>[]> {
+  const text = await file.text();
+  const res = Papa.parse<Record<string, any>>(text, {
+    header: true,
+    skipEmptyLines: true,
+  });
+  return res.data ?? [];
+}
+
+async function parseSpreadsheet(file: File): Promise<Record<string, any>[]> {
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await file.arrayBuffer());
+  const ws = wb.worksheets[0];
+  if (!ws) throw new Error("Empty workbook");
+
+  const headerRow = ws.getRow(1);
+  const headers: string[] = [];
+  headerRow.eachCell({ includeEmpty: true }, (cell, col) => {
+    headers[col - 1] = String(cellValue(cell.value) ?? "").trim();
+  });
+  if (headers.filter(Boolean).length === 0) return [];
+
+  const out: Record<string, any>[] = [];
+  ws.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const obj: Record<string, any> = {};
+    let hasValue = false;
+    headers.forEach((h, i) => {
+      if (!h) return;
+      const v = cellValue(row.getCell(i + 1).value);
+      if (v !== "") hasValue = true;
+      obj[h] = v;
+    });
+    if (hasValue) out.push(obj);
+  });
+  return out;
+}
+
 
 export function ImportExpensesDialog({
   open,
@@ -140,11 +197,9 @@ export function ImportExpensesDialog({
       return;
     }
     try {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: "array", cellDates: false });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      if (!ws) throw new Error("Empty workbook");
-      const json: Record<string, any>[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+      const json: Record<string, any>[] = lower.endsWith(".csv")
+        ? await parseCsv(file)
+        : await parseSpreadsheet(file);
       if (json.length === 0) {
         toast.error("No rows found in the file.");
         return;
