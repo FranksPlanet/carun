@@ -8,7 +8,7 @@ import { listRepairs } from "@/lib/repairs.functions";
 import { getProfile } from "@/lib/profile.functions";
 import { useMemo, useState } from "react";
 import {
-  consumptionPoints,
+  consumptionSeries,
   averageConsumption,
   lifetimeBreakdown,
   costPerKmViews,
@@ -18,7 +18,14 @@ import {
 } from "@/lib/calc";
 import { useCategories, type CategoryRow, CategoryIcon } from "@/lib/categories";
 
-import { defaultSettings, formatMoney } from "@/lib/format";
+import {
+  defaultSettings,
+  formatMoney,
+  formatQuantity,
+  formatPricePerUnit,
+  formatConsumptionUnit,
+} from "@/lib/format";
+
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight, Fuel } from "lucide-react";
 import { t } from "@/lib/strings";
@@ -100,30 +107,42 @@ function Dashboard() {
   const cpkMode: CostPerKmMode =
     ((profileQ.data as any)?.default_cost_per_km_mode as CostPerKmMode) ?? "with_depreciation";
 
-  // Fuel aggregates (used by the story and the fuel widget)
+  // Fuel aggregates — one entry per fuel-role category (N sources supported).
   const fuel = useMemo(() => {
-    const points = consumptionPoints(expenses);
-    let liters = 0;
+    const series = consumptionSeries(expenses, categories as any);
     let fuelAmount = 0;
     for (const e of expenses) {
-      if (e.role === "fuel" && e.liters && e.liters > 0) {
-        liters += e.liters;
-        fuelAmount += e.amount_minor;
-      }
+      if (e.role === "fuel") fuelAmount += e.amount_minor;
     }
-    const pricePerLiterMinor = liters > 0 ? fuelAmount / liters : null;
-    const avg = averageConsumption(points);
+    const sources = series.map((s) => {
+      let quantity = 0;
+      let amount = 0;
+      for (const e of expenses) {
+        if (e.category_id === s.category_id && e.quantity && e.quantity > 0) {
+          quantity += e.quantity;
+          amount += e.amount_minor;
+        }
+      }
+      return {
+        category_id: s.category_id,
+        name: s.category_name,
+        unit: s.unit,
+        quantity,
+        amount,
+        price_per_unit_minor: quantity > 0 ? amount / quantity : null,
+        avg: averageConsumption(s.points),
+      };
+    });
     const total = totalLogged(expenses);
     const fuelSharePct = total > 0 ? (fuelAmount / total) * 100 : null;
     return {
-      liters,
+      sources,
       fuelAmount,
-      pricePerLiterMinor,
-      avg,
       fuelSharePct,
-      hasFuel: liters > 0,
+      hasFuel: sources.some((s) => s.quantity > 0),
     };
-  }, [expenses]);
+  }, [expenses, categories]);
+
 
   // Fixed role-based spending buckets for the story stanza 3.
   const spendingBuckets = useMemo(() => {
@@ -224,8 +243,8 @@ function Dashboard() {
               vehicleName={vehicle.name}
               lifetimeKm={cpkViews.lifetime_km}
               costPerKmMinor={pickCostPerKm(cpkViews, cpkMode)}
-              totalLiters={fuel.liters}
-              avgConsumptionLPer100Km={fuel.avg}
+              fuelSources={fuel.sources}
+
               buckets={spendingBuckets}
               settings={cardSettings}
               hasAnyExpense={expenses.length > 0}
@@ -304,28 +323,38 @@ function Dashboard() {
             </div>
 
             {fuel.hasFuel ? (
-              <div className="grid grid-cols-2 gap-3">
-                <FuelStat
-                  label="Total fuel"
-                  value={`${Math.round(fuel.liters).toLocaleString("cs-CZ").replace(/[\s\u202F]/g, "\u00A0")}\u00A0l`}
-                />
-                <FuelStat
-                  label="Avg price"
-                  value={
-                    fuel.pricePerLiterMinor != null
-                      ? formatPricePerLiterLocal(fuel.pricePerLiterMinor, cardSettings.currency)
-                      : "—"
-                  }
-                />
-                <FuelStat
-                  label="Consumption"
-                  value={fuel.avg != null ? `${fuel.avg.toFixed(2).replace(".", ",")}\u00A0l/100km` : "—"}
-                />
-                <FuelStat
-                  label="Share of cost"
-                  value={fuel.fuelSharePct != null ? `${fuel.fuelSharePct.toFixed(0)}\u00A0%` : "—"}
-                />
+              <div className="space-y-4">
+                {fuel.sources.map((s) => (
+                  <div key={s.category_id}>
+                    {fuel.sources.length > 1 && (
+                      <div className="text-xs text-muted-foreground mb-1">{s.name}</div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <FuelStat
+                        label={`Total ${s.name.toLowerCase()}`}
+                        value={formatQuantity(s.quantity, s.unit, cardSettings, 0)}
+                      />
+                      <FuelStat
+                        label="Avg price"
+                        value={
+                          s.price_per_unit_minor != null
+                            ? formatPricePerUnit(s.price_per_unit_minor, s.unit, cardSettings)
+                            : "—"
+                        }
+                      />
+                      <FuelStat
+                        label="Consumption"
+                        value={formatConsumptionUnit(s.avg, s.unit, cardSettings)}
+                      />
+                      <FuelStat
+                        label="Share of cost"
+                        value={fuel.fuelSharePct != null ? `${fuel.fuelSharePct.toFixed(0)}\u00A0%` : "—"}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
+
             ) : (
               <p className="text-sm text-muted-foreground">
                 Log a fuel fill-up to see your consumption and share of cost.

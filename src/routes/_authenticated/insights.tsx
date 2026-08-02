@@ -22,14 +22,14 @@ import { getProfile } from "@/lib/profile.functions";
 import { useCategories, type CategoryRow } from "@/lib/categories";
 
 import {
-  consumptionPoints,
+  consumptionSeries,
   segmentedAverages,
   averageConsumption,
-  pricePerLiterSeries,
+  pricePerUnitSeries,
   lifetimeBreakdown,
   projection,
   defaultAnnualKm,
-  defaultFuelPriceMinor,
+  defaultFuelPriceMinorForCategory,
   defaultMaintenancePerKm,
   type ExpenseRow,
 } from "@/lib/calc";
@@ -40,6 +40,8 @@ import {
   formatDistance,
   formatMoney,
   formatPricePerLiter,
+  formatPricePerUnit,
+  formatConsumptionUnit,
   moneyMajorToMinor,
   moneyMinorToMajor,
   type ProfileSettings,
@@ -129,9 +131,10 @@ function InsightsPage() {
   const repairs = (repairsQ.data ?? []) as { amount_minor: number }[];
 
 
-  const points = useMemo(() => consumptionPoints(expenses), [expenses]);
-  const segAvg = useMemo(() => segmentedAverages(points), [points]);
-  const overallAvg = useMemo(() => averageConsumption(points), [points]);
+  const fuelSeries = useMemo(
+    () => consumptionSeries(expenses, categories as any),
+    [expenses, categories],
+  );
 
   const lifetime = useMemo(
     () =>
@@ -150,25 +153,28 @@ function InsightsPage() {
     [vehicle, expenses, recurring, repairs],
   );
 
-  const consChartData = useMemo(
+  // One bundle of derived chart data per fuel-role category.
+  const seriesViews = useMemo(
     () =>
-      points.map((p) => ({
-        date: p.date,
-        l_per_100km: Number(p.l_per_100km.toFixed(2)),
-        spike: p.is_spike ? Number(p.l_per_100km.toFixed(2)) : null,
-        is_loaded: p.is_loaded,
+      fuelSeries.map((s) => ({
+        category_id: s.category_id,
+        name: s.category_name,
+        unit: s.unit,
+        segAvg: segmentedAverages(s.points),
+        overallAvg: averageConsumption(s.points),
+        consChartData: s.points.map((p) => ({
+          date: p.date,
+          per_100km: Number(p.per_100km.toFixed(2)),
+          spike: p.is_spike ? Number(p.per_100km.toFixed(2)) : null,
+          is_loaded: p.is_loaded,
+        })),
+        priceSeries: pricePerUnitSeries(expenses, s.category_id).map((p) => ({
+          date: p.date,
+          price_major: moneyMinorToMajor(p.price, currency),
+          price_minor: p.price,
+        })),
       })),
-    [points],
-  );
-
-  const priceSeries = useMemo(
-    () =>
-      pricePerLiterSeries(expenses).map((p) => ({
-        date: p.date,
-        price_major: moneyMinorToMajor(p.price, currency),
-        price_minor: p.price,
-      })),
-    [expenses, currency],
+    [fuelSeries, expenses, currency],
   );
 
   if (vehiclesQ.isLoading) {
@@ -196,8 +202,6 @@ function InsightsPage() {
     );
   }
 
-  const hasConsumption = points.length >= 1;
-  const hasPrice = priceSeries.length >= 1;
 
   return (
     <div className="space-y-6">
@@ -220,127 +224,146 @@ function InsightsPage() {
         </div>
       )}
 
-      {/* Segmented averages */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="kpi-card">
-          <div className="kpi-label">{t.kpi.cleanAvg}</div>
-          <KpiValue value={formatConsumption(segAvg.clean, settings)} />
-          <div className="text-xs text-muted-foreground mt-1">Untagged fills</div>
+      {seriesViews.length === 0 && (
+        <div id="consumption" className="kpi-card">
+          <div className="kpi-label mb-2">Consumption</div>
+          <p className="text-sm text-muted-foreground">{t.empty.needFuel}</p>
         </div>
-        <div className="kpi-card">
-          <div className="kpi-label">{t.kpi.loadedAvg}</div>
-          <KpiValue value={formatConsumption(segAvg.loaded, settings)} />
-          <div className="text-xs text-muted-foreground mt-1">
-            Towing · Fully loaded · Roof box
+      )}
+
+      {seriesViews.map((sv, idx) => (
+        <div key={sv.category_id} className="space-y-6">
+          {/* Segmented averages */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="kpi-card">
+              <div className="kpi-label">{t.kpi.cleanAvg}</div>
+              <KpiValue value={formatConsumptionUnit(sv.segAvg.clean, sv.unit, settings)} />
+              <div className="text-xs text-muted-foreground mt-1">Untagged fills</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-label">{t.kpi.loadedAvg}</div>
+              <KpiValue value={formatConsumptionUnit(sv.segAvg.loaded, sv.unit, settings)} />
+              <div className="text-xs text-muted-foreground mt-1">
+                Towing · Fully loaded · Roof box
+              </div>
+            </div>
+          </div>
+
+          {/* Consumption trend */}
+          <div id={idx === 0 ? "consumption" : undefined} className="kpi-card">
+            <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
+              <div className="kpi-label">
+                {sv.name} consumption ({sv.unit} / 100 km)
+              </div>
+              {sv.overallAvg != null && (
+                <div className="text-xs text-muted-foreground">
+                  Avg {formatConsumptionUnit(sv.overallAvg, sv.unit, settings)}
+                </div>
+              )}
+            </div>
+            <div className="h-64">
+              {sv.consChartData.length === 0 ? (
+                <div className="h-full grid place-items-center text-muted-foreground text-sm text-center px-6">
+                  {t.empty.needFuel}
+                </div>
+              ) : (
+                <ResponsiveContainer>
+                  <ComposedChart data={sv.consChartData}>
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                      domain={["auto", "auto"]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
+                      }}
+                      formatter={(v: any) =>
+                        v == null ? "—" : `${v} ${sv.unit} / 100 km`
+                      }
+                    />
+                    {sv.overallAvg != null && (
+                      <ReferenceLine
+                        y={Number(sv.overallAvg.toFixed(2))}
+                        stroke="var(--color-muted-foreground)"
+                        strokeDasharray="3 3"
+                        label={{
+                          value: "avg",
+                          fill: "var(--color-muted-foreground)",
+                          fontSize: 10,
+                          position: "right",
+                        }}
+                      />
+                    )}
+                    <Line
+                      type="monotone"
+                      dataKey="per_100km"
+                      stroke="var(--color-primary)"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: "var(--color-primary)" }}
+                      activeDot={{ r: 5 }}
+                    />
+                    <Scatter dataKey="spike" fill="var(--color-destructive)" shape="circle" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Tagged loads (towing, roof box, fully loaded) are expected to read higher. An
+              untagged spike — highlighted — may be worth a check.
+            </p>
+          </div>
+
+          {/* Price paid */}
+          <div className="kpi-card">
+            <div className="kpi-label mb-2">{sv.name} price paid</div>
+            <div className="h-56">
+              {sv.priceSeries.length === 0 ? (
+                <div className="h-full grid place-items-center text-muted-foreground text-sm text-center px-6">
+                  {t.empty.needFuel}
+                </div>
+              ) : (
+                <ResponsiveContainer>
+                  <LineChart data={sv.priceSeries}>
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
+                      domain={["auto", "auto"]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "var(--color-card)",
+                        border: "1px solid var(--color-border)",
+                      }}
+                      formatter={(_v: any, _n: any, item: any) =>
+                        formatPricePerUnit(
+                          item?.payload?.price_minor ?? 0,
+                          sv.unit,
+                          moneySettings,
+                        )
+                      }
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="price_major"
+                      stroke="var(--color-primary)"
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: "var(--color-primary)" }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Consumption trend */}
-      <div id="consumption" className="kpi-card">
-        <div className="flex items-baseline justify-between mb-2 gap-2 flex-wrap">
-          <div className="kpi-label">Consumption trend (l/100km)</div>
-          {overallAvg != null && (
-            <div className="text-xs text-muted-foreground">
-              Avg {formatConsumption(overallAvg, settings)}
-            </div>
-          )}
-        </div>
-        <div className="h-64">
-          {!hasConsumption ? (
-            <div className="h-full grid place-items-center text-muted-foreground text-sm text-center px-6">
-              {t.empty.needFuel}
-            </div>
-          ) : (
-            <ResponsiveContainer>
-              <ComposedChart data={consChartData}>
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
-                />
-                <YAxis
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
-                  domain={["auto", "auto"]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                  }}
-                  formatter={(v: any) => (v == null ? "—" : `${v} l/100km`)}
-                />
-                {overallAvg != null && (
-                  <ReferenceLine
-                    y={Number(overallAvg.toFixed(2))}
-                    stroke="var(--color-muted-foreground)"
-                    strokeDasharray="3 3"
-                    label={{
-                      value: "avg",
-                      fill: "var(--color-muted-foreground)",
-                      fontSize: 10,
-                      position: "right",
-                    }}
-                  />
-                )}
-                <Line
-                  type="monotone"
-                  dataKey="l_per_100km"
-                  stroke="var(--color-primary)"
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: "var(--color-primary)" }}
-                  activeDot={{ r: 5 }}
-                />
-                <Scatter dataKey="spike" fill="var(--color-destructive)" shape="circle" />
-              </ComposedChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground mt-3">
-          Tagged loads (towing, roof box, fully loaded) are expected to read higher. An
-          untagged spike — highlighted — may be worth a check.
-        </p>
-      </div>
-
-      {/* Fuel price paid */}
-      <div className="kpi-card">
-        <div className="kpi-label mb-2">Fuel price paid</div>
-        <div className="h-56">
-          {!hasPrice ? (
-            <div className="h-full grid place-items-center text-muted-foreground text-sm text-center px-6">
-              {t.empty.needFuel}
-            </div>
-          ) : (
-            <ResponsiveContainer>
-              <LineChart data={priceSeries}>
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
-                />
-                <YAxis
-                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
-                  domain={["auto", "auto"]}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--color-card)",
-                    border: "1px solid var(--color-border)",
-                  }}
-                  formatter={(_v: any, _n: any, item: any) =>
-                    formatPricePerLiter(item?.payload?.price_minor ?? 0, moneySettings)
-                  }
-                />
-                <Line
-                  type="monotone"
-                  dataKey="price_major"
-                  stroke="var(--color-primary)"
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: "var(--color-primary)" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      </div>
+      ))}
 
       {/* Lifetime cost */}
       {lifetime && (
@@ -447,6 +470,7 @@ function InsightsPage() {
         <ProjectionSection
           vehicle={vehicle}
           expenses={expenses}
+          categories={categories}
           recurring={recurring}
           settings={settings}
           moneySettings={moneySettings}
@@ -461,6 +485,7 @@ function InsightsPage() {
 type ProjectionProps = {
   vehicle: any;
   expenses: ExpenseRow[];
+  categories: CategoryRow[];
   recurring: { amount_minor_per_year: number }[];
   settings: ProfileSettings;
   moneySettings: ProfileSettings;
@@ -472,19 +497,37 @@ type ProjectionProps = {
 function ProjectionSection({
   vehicle,
   expenses,
+  categories,
   recurring,
   settings,
   moneySettings,
   currency,
 }: ProjectionProps) {
   const defAnnualKm = useMemo(() => defaultAnnualKm(expenses), [expenses]);
-  const defFuelMinor = useMemo(() => defaultFuelPriceMinor(expenses), [expenses]);
   const defMaintPerKm = useMemo(() => defaultMaintenancePerKm(expenses), [expenses]);
 
-  const [annualKm, setAnnualKm] = useState<number>(defAnnualKm);
-  const [fuelPriceMajor, setFuelPriceMajor] = useState<number>(
-    moneyMinorToMajor(defFuelMinor || moneyMajorToMinor(40, currency), currency),
+  // One price control per fuel-role category that actually has fill-ups.
+  const fuelSeries = useMemo(
+    () => consumptionSeries(expenses, categories as any),
+    [expenses, categories],
   );
+  const defaultPricesMinor = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const s of fuelSeries) {
+      m[s.category_id] =
+        defaultFuelPriceMinorForCategory(expenses, s.category_id) ||
+        moneyMajorToMinor(40, currency);
+    }
+    return m;
+  }, [fuelSeries, expenses, currency]);
+
+  const [annualKm, setAnnualKm] = useState<number>(defAnnualKm);
+  const [pricesMajor, setPricesMajor] = useState<Record<string, number>>(() => {
+    const m: Record<string, number> = {};
+    for (const k of Object.keys(defaultPricesMinor))
+      m[k] = moneyMinorToMajor(defaultPricesMinor[k], currency);
+    return m;
+  });
   const [horizon, setHorizon] = useState<number>(5);
   const [maintMajorPerKm, setMaintMajorPerKm] = useState<number>(
     moneyMinorToMajor(defMaintPerKm, currency),
@@ -495,22 +538,28 @@ function ProjectionSection({
     setAnnualKm(defAnnualKm);
   }, [defAnnualKm, vehicle?.id]);
   useEffect(() => {
-    setFuelPriceMajor(
-      moneyMinorToMajor(defFuelMinor || moneyMajorToMinor(40, currency), currency),
-    );
-  }, [defFuelMinor, currency, vehicle?.id]);
+    const m: Record<string, number> = {};
+    for (const k of Object.keys(defaultPricesMinor))
+      m[k] = moneyMinorToMajor(defaultPricesMinor[k], currency);
+    setPricesMajor(m);
+  }, [defaultPricesMinor, currency, vehicle?.id]);
   useEffect(() => {
     setMaintMajorPerKm(moneyMinorToMajor(defMaintPerKm, currency));
   }, [defMaintPerKm, currency, vehicle?.id]);
 
-  const fuelPriceMinor = moneyMajorToMinor(fuelPriceMajor, currency);
   const maintMinorPerKm = moneyMajorToMinor(maintMajorPerKm, currency);
 
-  const fuelMinPct = 0.5;
-  const fuelMaxPct = 1.5;
-  const fuelSliderBaseMajor = moneyMinorToMajor(
-    defFuelMinor || moneyMajorToMinor(40, currency),
-    currency,
+  const sourcesInput = useMemo(
+    () =>
+      fuelSeries.map((s) => ({
+        category_id: s.category_id,
+        price_per_unit_minor: moneyMajorToMinor(
+          pricesMajor[s.category_id] ??
+            moneyMinorToMajor(defaultPricesMinor[s.category_id] ?? 0, currency),
+          currency,
+        ),
+      })),
+    [fuelSeries, pricesMajor, defaultPricesMinor, currency],
   );
 
   const result = useMemo(
@@ -522,15 +571,16 @@ function ProjectionSection({
           purchase_price_minor: vehicle.purchase_price_minor,
         },
         expenses,
+        categories as any,
         recurring,
         {
           annual_km: annualKm,
-          fuel_price_per_liter_minor: fuelPriceMinor,
+          sources: sourcesInput,
           horizon_years: horizon,
           maintenance_minor_per_km: maintMinorPerKm,
         },
       ),
-    [vehicle, expenses, recurring, annualKm, fuelPriceMinor, horizon, maintMinorPerKm],
+    [vehicle, expenses, categories, recurring, annualKm, sourcesInput, horizon, maintMinorPerKm],
   );
 
   const purchaseKnown = vehicle.purchase_price_minor > 0;
@@ -552,9 +602,18 @@ function ProjectionSection({
       <div className="flex items-baseline justify-between gap-2 flex-wrap mb-3">
         <div className="kpi-label">Projection</div>
         <div className="text-xs text-muted-foreground">
-          {result.using_measured_consumption
-            ? `Using measured ${formatConsumption(result.avg_consumption_l_per_100km, settings)}`
-            : `Using default 7.5 l/100km (log more fuel for accuracy)`}
+          {result.sources.length === 0
+            ? "Log a fuel fill-up for a consumption-based estimate"
+            : result.sources
+                .map(
+                  (s) =>
+                    `${s.category_name}: ${formatConsumptionUnit(
+                      s.consumption_per_100km,
+                      s.unit,
+                      settings,
+                    )}${s.using_measured_consumption ? "" : " (default)"}`,
+                )
+                .join(" · ")}
         </div>
       </div>
 
@@ -574,18 +633,35 @@ function ProjectionSection({
           />
         </SliderRow>
 
-        <SliderRow
-          label="Fuel price"
-          value={formatPricePerLiter(fuelPriceMinor, moneySettings)}
-        >
-          <Slider
-            min={Math.max(0.01, fuelSliderBaseMajor * fuelMinPct)}
-            max={Math.max(0.02, fuelSliderBaseMajor * fuelMaxPct)}
-            step={0.01}
-            value={[fuelPriceMajor]}
-            onValueChange={(v) => setFuelPriceMajor(v[0])}
-          />
-        </SliderRow>
+        {fuelSeries.map((fs) => {
+          const baseMajor = moneyMinorToMajor(
+            defaultPricesMinor[fs.category_id] ?? moneyMajorToMinor(40, currency),
+            currency,
+          );
+          const valMajor = pricesMajor[fs.category_id] ?? baseMajor;
+          return (
+            <SliderRow
+              key={fs.category_id}
+              label={`${fs.category_name} price`}
+              value={formatPricePerUnit(
+                moneyMajorToMinor(valMajor, currency),
+                fs.unit,
+                moneySettings,
+              )}
+            >
+              <Slider
+                min={Math.max(0.01, baseMajor * 0.5)}
+                max={Math.max(0.02, baseMajor * 1.5)}
+                step={0.01}
+                value={[valMajor]}
+                onValueChange={(v) =>
+                  setPricesMajor((prev) => ({ ...prev, [fs.category_id]: v[0] }))
+                }
+                aria-label={`${fs.category_name} price`}
+              />
+            </SliderRow>
+          );
+        })}
 
         <SliderRow label="Horizon" value={`${horizon} yr`}>
           <Slider

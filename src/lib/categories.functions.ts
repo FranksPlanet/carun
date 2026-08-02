@@ -9,6 +9,9 @@ const CreateSchema = z.object({
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   icon: z.string().min(1).max(40),
   role: RoleEnum,
+  // Unit of measure, meaningful only for role='fuel' ("l", "kWh", "kg", …).
+  unit: z.string().min(1).max(12).optional().nullable(),
+
   sort_order: z.number().int().optional(),
   description: z.string().max(200).optional().nullable(),
 });

@@ -27,7 +27,10 @@ export type CategoryRow = {
   color: string;
   icon: string;
   role: CategoryRole;
+  // Unit of measure for role='fuel' categories ("l", "kWh", "kg", …).
+  unit: string | null;
   sort_order: number;
+
   description: string | null;
   created_at: string;
   updated_at: string;

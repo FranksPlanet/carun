@@ -117,7 +117,7 @@
               "type": "string",
               "description": "Currency code, defaults to the vehicle's currency (CZK)."
             },
-            "liters": {
+            "quantity": {
               "type": "number",
               "description": "Litres filled, for fuel expenses only."
             },

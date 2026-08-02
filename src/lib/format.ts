@@ -122,9 +122,56 @@ export function formatConsumption(lPer100km: number | null, settings: ProfileSet
   }
 }
 
+// ---- Unit-aware (multi-fuel-source) formatters -------------------------
+// A fuel-role category carries its own unit ("l", "kWh", "kg", …). These
+// keep the NBSP / spaced-slash conventions but never hardcode litres.
+
+// Long, prose form of a unit ("l" → "litres") for narrative copy.
+export function unitLongLabel(unit: string): string {
+  return unit === "l" ? "litres" : unit;
+}
+
+// Quantity + unit, e.g. "42,80 l" / "18,20 kWh". Litres still honour the
+// user's gal preference; other units are shown as-is.
+export function formatQuantity(
+  value: number,
+  unit: string,
+  settings: ProfileSettings,
+  fraction = 2,
+): string {
+  if (unit === "l") return formatVolume(value, settings, fraction);
+  return `${formatNumber(value, fraction, settings.currency)}${NBSP}${unit}`;
+}
+
+// Consumption per 100 km in the series' own unit. Litres keep the existing
+// consumption_style handling (km/l, mpg); other units are always per 100 km.
+export function formatConsumptionUnit(
+  per100km: number | null,
+  unit: string,
+  settings: ProfileSettings,
+): string {
+  if (per100km == null || !isFinite(per100km)) return "—";
+  if (unit === "l") return formatConsumption(per100km, settings);
+  return `${formatNumber(per100km, 2, settings.currency)}${NBSP}${unit}${NBSP}/${NBSP}100${NBSP}km`;
+}
+
+// Price per unit, e.g. "38,79 Kč / l" or "6,50 Kč / kWh".
+export function formatPricePerUnit(
+  priceMinor: number,
+  unit: string,
+  settings: ProfileSettings,
+): string {
+  if (unit === "l") return formatPricePerLiter(priceMinor, settings);
+  const sym = currencySymbol[settings.currency] ?? settings.currency;
+  const digits = currencyMinorDigits[settings.currency] ?? 2;
+  const major = priceMinor / Math.pow(10, digits);
+  return `${formatNumber(major, 2, settings.currency)}${NBSP}${sym}${NBSP}/${NBSP}${unit}`;
+}
+
 export function currencySymbolFor(currency: string): string {
   return currencySymbol[currency] ?? currency;
 }
+
 
 export function parseLocalNumber(input: string): number {
   if (input == null) return NaN;

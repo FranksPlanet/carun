@@ -20,7 +20,7 @@ export default defineTool({
     const { data, error } = await supabase
       .from("expenses")
       .select(
-        "id, date, odometer_km, amount_minor, currency, liters, full_tank, note, tags, categories!expenses_category_id_fkey ( id, name, role )",
+        "id, date, odometer_km, amount_minor, currency, quantity, full_tank, note, tags, categories!expenses_category_id_fkey ( id, name, role )",
       )
       .eq("vehicle_id", vehicle_id)
       .order("date", { ascending: false })
