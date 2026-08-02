@@ -316,28 +316,38 @@ function Dashboard() {
             </div>
 
             {fuel.hasFuel ? (
-              <div className="grid grid-cols-2 gap-3">
-                <FuelStat
-                  label="Total fuel"
-                  value={`${Math.round(fuel.liters).toLocaleString("cs-CZ").replace(/[\s\u202F]/g, "\u00A0")}\u00A0l`}
-                />
-                <FuelStat
-                  label="Avg price"
-                  value={
-                    fuel.pricePerLiterMinor != null
-                      ? formatPricePerLiterLocal(fuel.pricePerLiterMinor, cardSettings.currency)
-                      : "—"
-                  }
-                />
-                <FuelStat
-                  label="Consumption"
-                  value={fuel.avg != null ? `${fuel.avg.toFixed(2).replace(".", ",")}\u00A0l/100km` : "—"}
-                />
-                <FuelStat
-                  label="Share of cost"
-                  value={fuel.fuelSharePct != null ? `${fuel.fuelSharePct.toFixed(0)}\u00A0%` : "—"}
-                />
+              <div className="space-y-4">
+                {fuel.sources.map((s) => (
+                  <div key={s.category_id}>
+                    {fuel.sources.length > 1 && (
+                      <div className="text-xs text-muted-foreground mb-1">{s.name}</div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3">
+                      <FuelStat
+                        label={`Total ${s.name.toLowerCase()}`}
+                        value={formatQuantity(s.quantity, s.unit, cardSettings, 0)}
+                      />
+                      <FuelStat
+                        label="Avg price"
+                        value={
+                          s.price_per_unit_minor != null
+                            ? formatPricePerUnit(s.price_per_unit_minor, s.unit, cardSettings)
+                            : "—"
+                        }
+                      />
+                      <FuelStat
+                        label="Consumption"
+                        value={formatConsumptionUnit(s.avg, s.unit, cardSettings)}
+                      />
+                      <FuelStat
+                        label="Share of cost"
+                        value={fuel.fuelSharePct != null ? `${fuel.fuelSharePct.toFixed(0)}\u00A0%` : "—"}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
+
             ) : (
               <p className="text-sm text-muted-foreground">
                 Log a fuel fill-up to see your consumption and share of cost.
