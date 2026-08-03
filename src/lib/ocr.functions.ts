@@ -91,6 +91,14 @@ export const scanReceipt = createServerFn({ method: "POST" })
         liters: coerceNumber(parsed.liters),
         category: parsed.category ?? null,
         station: parsed.station ?? null,
+        currency:
+          typeof parsed.currency === "string" && /^[A-Za-z]{3}$/.test(parsed.currency.trim())
+            ? parsed.currency.trim().toUpperCase()
+            : null,
+        quantity_unit:
+          typeof parsed.quantity_unit === "string" && parsed.quantity_unit.trim()
+            ? parsed.quantity_unit.trim()
+            : null,
       };
     } catch (err) {
       // Keep the raw model output diagnosable instead of failing invisibly.
@@ -98,6 +106,14 @@ export const scanReceipt = createServerFn({ method: "POST" })
         error: err instanceof Error ? err.message : String(err),
         rawText: text.slice(0, 2000),
       });
-      return { date: null, total: null, liters: null, category: null, station: null };
+      return {
+        date: null,
+        total: null,
+        liters: null,
+        category: null,
+        station: null,
+        currency: null,
+        quantity_unit: null,
+      };
     }
   });
