@@ -347,6 +347,9 @@ function ExpensesPage() {
   }
 
   function exportCsv() {
+    // Always export the raw GROSS rows, never the VAT-transformed view — the
+    // "amount" column must not silently change meaning when the ex-VAT toggle
+    // is on. vat_rate is exported so the file round-trips through Import.
     const header = [
       "date",
       "odometer_km",
@@ -355,10 +358,11 @@ function ExpensesPage() {
       "currency",
       "quantity",
       "full_tank",
+      "vat_rate",
       "tags",
       "note",
     ];
-    const rows = expenses.map((e) => [
+    const rows = (rawExpenses as any[]).map((e) => [
       e.date,
       e.odometer_km,
       categoryById(categories, e.category_id)?.name ?? "",
@@ -366,9 +370,11 @@ function ExpensesPage() {
       currency,
       e.quantity ?? "",
       e.full_tank == null ? "" : e.full_tank ? "true" : "false",
+      e.vat_rate == null ? "" : String(Number(e.vat_rate)),
       (e.tags ?? []).join("|"),
-      (((e as any).note ?? "") as string).replace(/[\r\n]+/g, " "),
+      ((e.note ?? "") as string).replace(/[\r\n]+/g, " "),
     ]);
+
     const csv = [header, ...rows]
       .map((r) =>
         r
