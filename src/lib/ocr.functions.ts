@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { generateText } from "ai";
+import { coerceDate, coerceNumber } from "@/lib/ocr-parse";
 
 // Accepts a base64-encoded image; sends it to Lovable AI Gateway with a vision
 // model and asks for structured JSON. Returns parsed fields (review-only on the
