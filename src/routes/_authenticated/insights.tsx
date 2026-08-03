@@ -17,6 +17,8 @@ import {
 } from "recharts";
 import { listVehicles } from "@/lib/vehicles.functions";
 import { listExpenses } from "@/lib/expenses.functions";
+import { detectAnomalies, flaggedPointCount } from "@/lib/anomalies";
+
 import { listRecurring } from "@/lib/recurring.functions";
 import { listRepairs } from "@/lib/repairs.functions";
 import { getProfile } from "@/lib/profile.functions";
