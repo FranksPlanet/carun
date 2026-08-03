@@ -76,13 +76,18 @@ export const scanReceipt = createServerFn({ method: "POST" })
     try {
       const parsed = JSON.parse(json);
       return {
-        date: parsed.date ?? null,
-        total: typeof parsed.total === "number" ? parsed.total : null,
-        liters: typeof parsed.liters === "number" ? parsed.liters : null,
+        date: coerceDate(parsed.date),
+        total: coerceNumber(parsed.total),
+        liters: coerceNumber(parsed.liters),
         category: parsed.category ?? null,
         station: parsed.station ?? null,
       };
-    } catch {
+    } catch (err) {
+      // Keep the raw model output diagnosable instead of failing invisibly.
+      console.error("[scanReceipt] Failed to parse model JSON", {
+        error: err instanceof Error ? err.message : String(err),
+        rawText: text.slice(0, 2000),
+      });
       return { date: null, total: null, liters: null, category: null, station: null };
     }
   });
