@@ -29,7 +29,7 @@ import {
   type CategoryRow,
 } from "@/lib/categories";
 
-type RevTabField = "date" | "odometer" | "category" | "amount" | "quantity" | "note" | "";
+type RevTabField = "date" | "odometer" | "category" | "amount" | "quantity" | "vat" | "note" | "";
 
 const FIELD_LABELS: Record<Exclude<RevTabField, "">, string> = {
   date: "Date",
@@ -37,6 +37,7 @@ const FIELD_LABELS: Record<Exclude<RevTabField, "">, string> = {
   category: "Category",
   amount: "Amount",
   quantity: "Quantity (fuel only)",
+  vat: "VAT rate (%)",
   note: "Note",
 };
 
@@ -46,6 +47,7 @@ function autodetect(header: string): RevTabField {
   const h = header.toLowerCase().trim();
   if (/^(date|datum|day)/.test(h)) return "date";
   if (/odo|km|mile|tach/.test(h)) return "odometer";
+  if (/vat|dph|tax.?rate|sazba/.test(h)) return "vat";
   if (/categ|kateg|type|typ/.test(h)) return "category";
   if (/amount|total|cena|částka|castka|sum|cost|price/.test(h)) return "amount";
   if (/liter|litr|volume|gal/.test(h)) return "quantity";
