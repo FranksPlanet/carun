@@ -78,6 +78,7 @@ function GaragePage() {
                   name: v.name,
                   currency: v.currency ?? settings.currency,
                   estimated_resale_value_minor: v.estimated_resale_value_minor ?? null,
+                  purchase_vat_rate: (v as any).purchase_vat_rate ?? null,
                 }}
                 trigger={
                   <Button variant="ghost" size="icon" aria-label="Edit vehicle">
