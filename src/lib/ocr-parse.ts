@@ -29,7 +29,13 @@ export function coerceNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Accepts "YYYY-MM-DD" or Czech "DD.MM.YYYY" / "D. M. YYYY"; returns ISO or null. */
+/**
+ * Defensive fallback only — the model is instructed to return ISO already.
+ * Accepts ISO "YYYY-MM-DD". For any other numeric date, day-vs-month order is
+ * locale-dependent and cannot be resolved here, so we only accept the cases
+ * that are unambiguous (one component > 12) and return null otherwise. A wrong
+ * date silently corrupts mileage/consumption history, so never guess.
+ */
 export function coerceDate(value: unknown): string | null {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value.toISOString().slice(0, 10);
@@ -38,16 +44,30 @@ export function coerceDate(value: unknown): string | null {
   const s = value.trim();
   if (!s) return null;
 
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) {
+    return `${iso[1]}-${iso[2].padStart(2, "0")}-${iso[3].padStart(2, "0")}`;
+  }
 
-  const cz = s.match(/^(\d{1,2})\s*[.\/-]\s*(\d{1,2})\s*[.\/-]\s*(\d{2,4})$/);
-  if (cz) {
-    const day = cz[1].padStart(2, "0");
-    const month = cz[2].padStart(2, "0");
-    let year = cz[3];
+  const num = s.match(/^(\d{1,2})\s*[.\/-]\s*(\d{1,2})\s*[.\/-]\s*(\d{2,4})$/);
+  if (num) {
+    const a = parseInt(num[1], 10);
+    const b = parseInt(num[2], 10);
+    let year = num[3];
     if (year.length === 2) year = `20${year}`;
-    return `${year}-${month}-${day}`;
+    let day: number, month: number;
+    if (a > 12 && b <= 12) {
+      day = a;
+      month = b;
+    } else if (b > 12 && a <= 12) {
+      month = a;
+      day = b;
+    } else {
+      // Both plausible as month → ambiguous (US MM/DD vs DD/MM). Refuse.
+      return null;
+    }
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   }
 
   return null;
