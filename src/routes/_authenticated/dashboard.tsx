@@ -258,6 +258,7 @@ function Dashboard() {
               photo_path: (vehicle as any).photo_path ?? null,
               estimated_resale_value_minor:
                 (vehicle as any).estimated_resale_value_minor ?? null,
+              purchase_vat_rate: (vehicle as any).purchase_vat_rate ?? null,
             }}
           />
 
