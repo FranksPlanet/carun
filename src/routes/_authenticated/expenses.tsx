@@ -645,7 +645,15 @@ function ExpensesPage() {
 
       {/* List */}
       <div className="kpi-card">
-        {expensesQ.isLoading ? (
+        {expensesQ.isError ? (
+          <ErrorState
+            compact
+            title="Couldn't load expenses"
+            message={errorMessage(expensesQ.error)}
+            onRetry={() => expensesQ.refetch()}
+            retrying={expensesQ.isFetching}
+          />
+        ) : expensesQ.isLoading ? (
           <ul className="divide-y divide-border">
             {[0, 1, 2].map((i) => (
               <li key={i} className="py-3 flex items-center gap-3">
