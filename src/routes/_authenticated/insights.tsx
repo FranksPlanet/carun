@@ -339,8 +339,12 @@ function InsightsPage() {
               {sv.overallAvg != null && (
                 <div className="text-xs text-muted-foreground">
                   Avg {formatConsumptionUnit(sv.overallAvg, sv.unit, settings)}
+                  {sv.flaggedPoints > 0
+                    ? ` · includes ${sv.flaggedPoints} flagged ${sv.flaggedPoints === 1 ? "entry" : "entries"}`
+                    : ""}
                 </div>
               )}
+
             </div>
             <div className="h-64">
               {sv.consChartData.length === 0 ? (
