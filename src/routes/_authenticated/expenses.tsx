@@ -277,7 +277,7 @@ function ExpensesPage() {
       qc.invalidateQueries({ queryKey: ["expenses", vehicle?.id] });
       toast.success("Deleted");
     },
-    onError: (e: any) => toast.error(e.message ?? "Failed to delete"),
+    onError: (e: any) => toast.error(errorMessage(e, "Failed to delete")),
   });
 
   function openAdd() {
