@@ -169,6 +169,26 @@ function InsightsPage() {
     [vehicleV, expenses, recurring, repairs],
   );
 
+  // Anomaly detection runs on the raw (gross, pre-VAT-view) rows: it is about
+  // odometers, dates and consumption, none of which the VAT view changes.
+  const anomalies = useMemo(() => {
+    const raw = (expensesQ.data ?? []) as any[];
+    if (raw.length === 0 || categories.length === 0)
+      return { flags: [] as ReturnType<typeof detectAnomalies>, flaggedByCategory: {} as Record<string, number> };
+    const byId = new Map(categories.map((c: CategoryRow) => [c.id, c.role] as const));
+    const mapped = raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
+    const series = consumptionSeries(mapped as any, categories as any);
+    const flags = detectAnomalies(mapped as any, series, categories as any);
+    const flaggedByCategory: Record<string, number> = {};
+    for (const s of series)
+      flaggedByCategory[s.category_id] = flaggedPointCount(s, mapped as any, flags);
+    return { flags, flaggedByCategory };
+  }, [expensesQ.data, categories]);
+
+  const fuelFlagCount = anomalies.flags.filter(
+    (f) => f.kind !== "duplicate" && f.kind !== "odometer_backwards",
+  ).length;
+
   // One bundle of derived chart data per fuel-role category.
   const seriesViews = useMemo(
     () =>
@@ -178,6 +198,7 @@ function InsightsPage() {
         unit: s.unit,
         segAvg: segmentedAverages(s.points),
         overallAvg: averageConsumption(s.points),
+        flaggedPoints: anomalies.flaggedByCategory[s.category_id] ?? 0,
         consChartData: s.points.map((p) => ({
           date: p.date,
           per_100km: Number(p.per_100km.toFixed(2)),
@@ -190,8 +211,9 @@ function InsightsPage() {
           price_minor: p.price,
         })),
       })),
-    [fuelSeries, expenses, currency],
+    [fuelSeries, expenses, currency, anomalies],
   );
+
 
   if (vehiclesQ.isError) {
     return (
