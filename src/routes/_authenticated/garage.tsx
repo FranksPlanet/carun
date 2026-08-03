@@ -33,7 +33,14 @@ function GaragePage() {
         </Button>
       </div>
 
-      {vehiclesQ.isLoading ? (
+      {vehiclesQ.isError ? (
+        <ErrorState
+          title="Couldn't load your garage"
+          message={errorMessage(vehiclesQ.error)}
+          onRetry={() => vehiclesQ.refetch()}
+          retrying={vehiclesQ.isFetching}
+        />
+      ) : vehiclesQ.isLoading ? (
         <ul className="grid gap-3">
           {[0, 1].map((i) => (
             <li key={i} className="kpi-card h-20 animate-pulse" />
