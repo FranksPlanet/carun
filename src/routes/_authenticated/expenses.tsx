@@ -99,7 +99,7 @@ type FormState = {
 };
 
 const emptyForm = (categoryId: string): FormState => ({
-  date: new Date().toISOString().slice(0, 10),
+  date: todayLocalISO(),
   odometer: "",
   category_id: categoryId,
   amount: "",
@@ -228,7 +228,7 @@ function ExpensesPage() {
       setForm({
         ...emptyForm(guess?.id ?? ""),
         odometer: vehicle.current_odometer_km ? String(vehicle.current_odometer_km) : "",
-        date: res.date || new Date().toISOString().slice(0, 10),
+        date: res.date || todayLocalISO(),
         amount: res.total != null ? String(res.total) : "",
         quantity: res.liters != null ? String(res.liters) : "",
         note: res.station ?? "",
@@ -383,9 +383,7 @@ function ExpensesPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `expenses-${vehicle?.name ?? "vehicle"}-${new Date()
-      .toISOString()
-      .slice(0, 10)}.csv`;
+    a.download = `expenses-${vehicle?.name ?? "vehicle"}-${todayLocalISO()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
