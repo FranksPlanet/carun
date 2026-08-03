@@ -14,6 +14,7 @@ const CreateExpenseSchema = z.object({
   tags: z.array(z.string().max(30)).max(10).default([]),
   note: z.string().max(500).optional().nullable(),
   receipt_path: z.string().max(500).optional().nullable(),
+  vat_rate: z.number().min(0).max(100).optional().nullable(),
 });
 
 // Flatten the joined category role onto each expense row so calc.ts can

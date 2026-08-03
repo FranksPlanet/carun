@@ -75,6 +75,7 @@ export type Database = {
           tags: string[]
           updated_at: string
           user_id: string
+          vat_rate: number | null
           vehicle_id: string
         }
         Insert: {
@@ -95,6 +96,7 @@ export type Database = {
           tags?: string[]
           updated_at?: string
           user_id: string
+          vat_rate?: number | null
           vehicle_id: string
         }
         Update: {
@@ -115,6 +117,7 @@ export type Database = {
           tags?: string[]
           updated_at?: string
           user_id?: string
+          vat_rate?: number | null
           vehicle_id?: string
         }
         Relationships: [
@@ -147,6 +150,7 @@ export type Database = {
           representative_date: string
           season: Database["public"]["Enums"]["season"] | null
           user_id: string
+          vat_rate: number | null
           vehicle_id: string
           year: number
         }
@@ -162,6 +166,7 @@ export type Database = {
           representative_date: string
           season?: Database["public"]["Enums"]["season"] | null
           user_id: string
+          vat_rate?: number | null
           vehicle_id: string
           year: number
         }
@@ -177,6 +182,7 @@ export type Database = {
           representative_date?: string
           season?: Database["public"]["Enums"]["season"] | null
           user_id?: string
+          vat_rate?: number | null
           vehicle_id?: string
           year?: number
         }
@@ -198,6 +204,7 @@ export type Database = {
           default_cost_per_km_mode: string
           distance_unit: Database["public"]["Enums"]["distance_unit"]
           locale: string
+          show_prices_ex_vat: boolean
           updated_at: string
           user_id: string
           volume_unit: Database["public"]["Enums"]["volume_unit"]
@@ -209,6 +216,7 @@ export type Database = {
           default_cost_per_km_mode?: string
           distance_unit?: Database["public"]["Enums"]["distance_unit"]
           locale?: string
+          show_prices_ex_vat?: boolean
           updated_at?: string
           user_id: string
           volume_unit?: Database["public"]["Enums"]["volume_unit"]
@@ -220,6 +228,7 @@ export type Database = {
           default_cost_per_km_mode?: string
           distance_unit?: Database["public"]["Enums"]["distance_unit"]
           locale?: string
+          show_prices_ex_vat?: boolean
           updated_at?: string
           user_id?: string
           volume_unit?: Database["public"]["Enums"]["volume_unit"]
@@ -235,6 +244,7 @@ export type Database = {
           label: string | null
           type: Database["public"]["Enums"]["recurring_type"]
           user_id: string
+          vat_rate: number | null
           vehicle_id: string
         }
         Insert: {
@@ -245,6 +255,7 @@ export type Database = {
           label?: string | null
           type: Database["public"]["Enums"]["recurring_type"]
           user_id: string
+          vat_rate?: number | null
           vehicle_id: string
         }
         Update: {
@@ -255,6 +266,7 @@ export type Database = {
           label?: string | null
           type?: Database["public"]["Enums"]["recurring_type"]
           user_id?: string
+          vat_rate?: number | null
           vehicle_id?: string
         }
         Relationships: [
@@ -322,6 +334,7 @@ export type Database = {
           purchase_date: string
           purchase_odometer_km: number
           purchase_price_minor: number
+          purchase_vat_rate: number | null
           updated_at: string
           user_id: string
         }
@@ -338,6 +351,7 @@ export type Database = {
           purchase_date: string
           purchase_odometer_km?: number
           purchase_price_minor?: number
+          purchase_vat_rate?: number | null
           updated_at?: string
           user_id: string
         }
@@ -354,6 +368,7 @@ export type Database = {
           purchase_date?: string
           purchase_odometer_km?: number
           purchase_price_minor?: number
+          purchase_vat_rate?: number | null
           updated_at?: string
           user_id?: string
         }

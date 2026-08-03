@@ -3,9 +3,10 @@ import { ErrorState, errorMessage } from "@/components/error-state";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Settings as SettingsIcon, Download, Trash2, Tag, Gauge } from "lucide-react";
+import { Settings as SettingsIcon, Download, Trash2, Tag, Gauge, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +50,23 @@ function SettingsPage() {
       setSavingMode(null);
     }
   }
+
+  const exVat = Boolean((profileQ.data as any)?.show_prices_ex_vat);
+  const [savingVat, setSavingVat] = useState(false);
+
+  async function setExVat(next: boolean) {
+    setSavingVat(true);
+    try {
+      await update({ data: { show_prices_ex_vat: next } });
+      await qc.invalidateQueries({ queryKey: ["profile"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setSavingVat(false);
+    }
+  }
+
+
 
   const [exporting, setExporting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -134,6 +152,31 @@ function SettingsPage() {
           })}
         </div>
       </section>
+
+      <section className="kpi-card space-y-3">
+        <h2 className="font-semibold flex items-center gap-2">
+          <Receipt className="size-4" aria-hidden /> VAT
+        </h2>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <Label htmlFor="exvat" className="text-sm font-medium">
+              Show prices excluding VAT
+            </Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              For VAT-registered users who reclaim VAT. Amounts you actually paid are always
+              available.
+            </p>
+          </div>
+          <Switch
+            id="exvat"
+            checked={exVat}
+            disabled={savingVat || profileQ.isLoading}
+            onCheckedChange={setExVat}
+          />
+        </div>
+      </section>
+
+
 
 
       <section className="kpi-card space-y-3">

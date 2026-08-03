@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight, Fuel } from "lucide-react";
 import { t } from "@/lib/strings";
 import { VehicleHero } from "@/components/vehicle-hero";
+import { applyVatView, vatSplit } from "@/lib/vat";
 import { CostPerKmWidget } from "@/components/cost-per-km-widget";
 import { StoryNarrative } from "@/components/story-narrative";
 
@@ -70,16 +71,27 @@ function Dashboard() {
   });
 
   const settings = profileQ.data ?? defaultSettings;
+  const exVat = Boolean((profileQ.data as any)?.show_prices_ex_vat);
   const categoriesQ = useCategories();
   const categories: CategoryRow[] = categoriesQ.data ?? [];
   const expenses = useMemo<ExpenseRow[]>(() => {
     const raw = (expensesQ.data ?? []) as any[];
     const byId = new Map(categories.map((c: CategoryRow) => [c.id, c.role] as const));
-    return raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
-  }, [expensesQ.data, categories]);
+    const mapped = raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
+    // VAT view is applied BEFORE calc.ts ever sees the rows — calc stays VAT-unaware.
+    return applyVatView(mapped, exVat);
+  }, [expensesQ.data, categories, exVat]);
 
   const recurring = (recurringQ.data ?? []) as { amount_minor_per_year: number }[];
   const repairs = (repairsQ.data ?? []) as { amount_minor: number }[];
+
+  // Purchase price also participates in the VAT view.
+  const purchasePriceMinor = useMemo(() => {
+    if (!vehicle) return 0;
+    return exVat
+      ? vatSplit(vehicle.purchase_price_minor, (vehicle as any).purchase_vat_rate ?? null).net
+      : vehicle.purchase_price_minor;
+  }, [vehicle, exVat]);
 
   const cpkViews = useMemo(() => {
     if (!vehicle) return null;
@@ -87,7 +99,7 @@ function Dashboard() {
       {
         purchase_date: vehicle.purchase_date,
         purchase_odometer_km: vehicle.purchase_odometer_km,
-        purchase_price_minor: vehicle.purchase_price_minor,
+        purchase_price_minor: purchasePriceMinor,
       },
       expenses,
       recurring,
@@ -95,7 +107,7 @@ function Dashboard() {
     );
     return costPerKmViews(
       {
-        purchase_price_minor: vehicle.purchase_price_minor,
+        purchase_price_minor: purchasePriceMinor,
         purchase_odometer_km: vehicle.purchase_odometer_km,
         current_odometer_km: vehicle.current_odometer_km ?? 0,
         estimated_resale_value_minor:
@@ -103,7 +115,8 @@ function Dashboard() {
       },
       lt.total_minor,
     );
-  }, [vehicle, expenses, recurring, repairs]);
+  }, [vehicle, purchasePriceMinor, expenses, recurring, repairs]);
+
 
   const cpkMode: CostPerKmMode =
     ((profileQ.data as any)?.default_cost_per_km_mode as CostPerKmMode) ?? "with_depreciation";
@@ -268,6 +281,9 @@ function Dashboard() {
             className="p-4 sm:p-5 border-b border-border"
             style={{ background: "color-mix(in oklab, var(--color-secondary) 55%, var(--color-card))" }}
           >
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">
+              {exVat ? "Excl. VAT" : "Incl. VAT"}
+            </div>
             <CostPerKmWidget
               views={cpkViews}
               mode={cpkMode}

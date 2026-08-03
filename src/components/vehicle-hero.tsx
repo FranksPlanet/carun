@@ -31,6 +31,7 @@ type VehicleLike = {
   currency: string;
   photo_path: string | null | undefined;
   estimated_resale_value_minor: number | null;
+  purchase_vat_rate?: number | null;
 };
 
 export function VehicleHero({ vehicle, flush = false }: { vehicle: VehicleLike; flush?: boolean }) {
@@ -190,6 +191,9 @@ function ResaleDialog({
       : "";
   const [name, setName] = useState(vehicle.name);
   const [resale, setResale] = useState(initial);
+  const initialVat =
+    vehicle.purchase_vat_rate != null ? String(Number(vehicle.purchase_vat_rate)) : "";
+  const [purchaseVat, setPurchaseVat] = useState(initialVat);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -199,6 +203,7 @@ function ResaleDialog({
     if (open) {
       setName(vehicle.name);
       setResale(initial);
+      setPurchaseVat(initialVat);
       setConfirmOpen(false);
       setConfirmText("");
     }
@@ -211,6 +216,16 @@ function ResaleDialog({
       toast.error("Name is required");
       return;
     }
+    const vatTrimmed = purchaseVat.trim();
+    let vatRate: number | null = null;
+    if (vatTrimmed) {
+      const parsed = parseLocalNumber(vatTrimmed);
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+        toast.error("VAT rate must be between 0 and 100");
+        return;
+      }
+      vatRate = parsed;
+    }
     setSaving(true);
     try {
       const trimmed = resale.trim();
@@ -222,6 +237,7 @@ function ResaleDialog({
           id: vehicle.id,
           name: trimmedName,
           estimated_resale_value_minor: minor,
+          purchase_vat_rate: vatRate,
         },
       });
       await qc.invalidateQueries({ queryKey: ["vehicles"] });
@@ -277,6 +293,19 @@ function ResaleDialog({
             />
             <p className="text-xs text-muted-foreground">
               Used for honest depreciation-based cost/km. Leave empty to skip the depreciation view.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="pvat-hero">Purchase VAT rate (%)</Label>
+            <Input
+              id="pvat-hero"
+              inputMode="decimal"
+              value={purchaseVat}
+              onChange={(e) => setPurchaseVat(e.target.value)}
+              placeholder="e.g. 21 — leave empty if unknown"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used when you view prices excluding VAT. Empty means unknown.
             </p>
           </div>
 
