@@ -29,7 +29,16 @@ import {
   type CategoryRow,
 } from "@/lib/categories";
 
-type RevTabField = "date" | "odometer" | "category" | "amount" | "quantity" | "vat" | "note" | "";
+type RevTabField =
+  | "date"
+  | "odometer"
+  | "category"
+  | "amount"
+  | "quantity"
+  | "full_tank"
+  | "vat"
+  | "note"
+  | "";
 
 const FIELD_LABELS: Record<Exclude<RevTabField, "">, string> = {
   date: "Date",
@@ -37,6 +46,7 @@ const FIELD_LABELS: Record<Exclude<RevTabField, "">, string> = {
   category: "Category",
   amount: "Amount",
   quantity: "Quantity (fuel only)",
+  full_tank: "Full tank? (fuel only)",
   vat: "VAT rate (%)",
   note: "Note",
 };
@@ -50,7 +60,8 @@ function autodetect(header: string): RevTabField {
   if (/vat|dph|tax.?rate|sazba/.test(h)) return "vat";
   if (/categ|kateg|type|typ/.test(h)) return "category";
   if (/amount|total|cena|částka|castka|sum|cost|price/.test(h)) return "amount";
-  if (/liter|litr|volume|gal/.test(h)) return "quantity";
+  if (/full.?tank|plna.?nadrz|plná.?nádrž/.test(h)) return "full_tank";
+  if (/liter|litr|volume|gal|kwh|quantity|qty|mnoz|množ/.test(h)) return "quantity";
   if (/note|pozn|comment|memo|desc/.test(h)) return "note";
   return "";
 }
@@ -93,6 +104,17 @@ function normalizeDate(v: any): string | null {
   const d = new Date(s);
   if (!isNaN(+d)) return d.toISOString().slice(0, 10);
   return null;
+}
+
+// Truthiness for an imported "full tank" cell. Unrecognised/blank values fall
+// back to true, matching the pre-column behaviour.
+function parseBool(v: any): boolean {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return v !== 0;
+  const s = String(v ?? "").trim().toLowerCase();
+  if (!s) return true;
+  if (["false", "0", "no", "n", "ne", "partial", "part"].includes(s)) return false;
+  return true;
 }
 
 function normalizeNumber(v: any): number {
@@ -180,6 +202,7 @@ export function ImportExpensesDialog({
     category: "",
     amount: "",
     quantity: "",
+    full_tank: "",
     vat: "",
     note: "",
     "": "",
@@ -189,7 +212,7 @@ export function ImportExpensesDialog({
   function reset() {
     setHeaders([]);
     setRows([]);
-    setMapping({ date: "", odometer: "", category: "", amount: "", quantity: "", vat: "", note: "", "": "" });
+    setMapping({ date: "", odometer: "", category: "", amount: "", quantity: "", full_tank: "", vat: "", note: "", "": "" });
     setFileName("");
   }
 
@@ -218,6 +241,7 @@ export function ImportExpensesDialog({
         category: "",
         amount: "",
         quantity: "",
+        full_tank: "",
         vat: "",
         note: "",
         "": "",
@@ -242,6 +266,7 @@ export function ImportExpensesDialog({
       category: mapping.category ? r[mapping.category] : "",
       amount: mapping.amount ? r[mapping.amount] : "",
       quantity: mapping.quantity ? r[mapping.quantity] : "",
+      full_tank: mapping.full_tank ? r[mapping.full_tank] : "",
       vat: mapping.vat ? r[mapping.vat] : "",
       note: mapping.note ? r[mapping.note] : "",
     }));
@@ -268,6 +293,11 @@ export function ImportExpensesDialog({
           vatNum != null && isFinite(vatNum) && vatNum >= 0 && vatNum <= 100 ? vatNum : null;
         const note = mapping.note ? String(r[mapping.note] ?? "").slice(0, 500) : null;
         const hasQuantity = lt != null && isFinite(lt) && lt > 0;
+        // Only assume "full tank" when the file doesn't say. full_tank drives
+        // the consumption maths, so a mapped column must win over the default.
+        const fullTank = mapping.full_tank
+          ? parseBool(r[mapping.full_tank])
+          : true;
         const fallback = hasQuantity ? fuelDefault ?? routineDefault : routineDefault;
         const cat = mapping.category
           ? resolveCategory(cats, r[mapping.category], fallback)
@@ -285,7 +315,7 @@ export function ImportExpensesDialog({
           amount_minor: moneyMajorToMinor(amt, currency),
           currency,
           quantity: isFuel && hasQuantity ? lt : null,
-          full_tank: isFuel ? true : null,
+          full_tank: isFuel ? fullTank : null,
           vat_rate: vatRate,
           tags: [],
           note: note || null,
