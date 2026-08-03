@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { ErrorState, errorMessage } from "@/components/error-state";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -17,6 +17,8 @@ import {
 } from "recharts";
 import { listVehicles } from "@/lib/vehicles.functions";
 import { listExpenses } from "@/lib/expenses.functions";
+import { detectAnomalies, flaggedPointCount } from "@/lib/anomalies";
+
 import { listRecurring } from "@/lib/recurring.functions";
 import { listRepairs } from "@/lib/repairs.functions";
 import { getProfile } from "@/lib/profile.functions";
@@ -51,7 +53,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Plus } from "lucide-react";
+import { Plus, AlertTriangle } from "lucide-react";
 import { t } from "@/lib/strings";
 
 export const Route = createFileRoute("/_authenticated/insights")({
@@ -169,6 +171,26 @@ function InsightsPage() {
     [vehicleV, expenses, recurring, repairs],
   );
 
+  // Anomaly detection runs on the raw (gross, pre-VAT-view) rows: it is about
+  // odometers, dates and consumption, none of which the VAT view changes.
+  const anomalies = useMemo(() => {
+    const raw = (expensesQ.data ?? []) as any[];
+    if (raw.length === 0 || categories.length === 0)
+      return { flags: [] as ReturnType<typeof detectAnomalies>, flaggedByCategory: {} as Record<string, number> };
+    const byId = new Map(categories.map((c: CategoryRow) => [c.id, c.role] as const));
+    const mapped = raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
+    const series = consumptionSeries(mapped as any, categories as any);
+    const flags = detectAnomalies(mapped as any, series, categories as any);
+    const flaggedByCategory: Record<string, number> = {};
+    for (const s of series)
+      flaggedByCategory[s.category_id] = flaggedPointCount(s, mapped as any, flags);
+    return { flags, flaggedByCategory };
+  }, [expensesQ.data, categories]);
+
+  const fuelFlagCount = anomalies.flags.filter(
+    (f) => f.kind !== "duplicate" && f.kind !== "odometer_backwards",
+  ).length;
+
   // One bundle of derived chart data per fuel-role category.
   const seriesViews = useMemo(
     () =>
@@ -178,6 +200,7 @@ function InsightsPage() {
         unit: s.unit,
         segAvg: segmentedAverages(s.points),
         overallAvg: averageConsumption(s.points),
+        flaggedPoints: anomalies.flaggedByCategory[s.category_id] ?? 0,
         consChartData: s.points.map((p) => ({
           date: p.date,
           per_100km: Number(p.per_100km.toFixed(2)),
@@ -190,8 +213,9 @@ function InsightsPage() {
           price_minor: p.price,
         })),
       })),
-    [fuelSeries, expenses, currency],
+    [fuelSeries, expenses, currency, anomalies],
   );
+
 
   if (vehiclesQ.isError) {
     return (
@@ -251,12 +275,42 @@ function InsightsPage() {
         </div>
       )}
 
+      {anomalies.flags.length > 0 && (
+        <div className="kpi-card border-l-2" style={{ borderLeftColor: "var(--color-accent)" }}>
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">
+                {anomalies.flags.length === 1
+                  ? "1 entry looks worth a check"
+                  : `${anomalies.flags.length} entries look worth a check`}
+                {fuelFlagCount > 0 && anomalies.flags.length !== fuelFlagCount
+                  ? ` (${fuelFlagCount} fuel)`
+                  : ""}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Nothing has been changed or removed — these are still counted in every figure
+                below. Open them to see what looks off and why.
+              </p>
+              <Link
+                to="/expenses"
+                hash="flagged"
+                className="inline-block mt-2 text-xs font-semibold underline underline-offset-4"
+              >
+                Review in Expenses
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {seriesViews.length === 0 && (
         <div id="consumption" className="kpi-card">
           <div className="kpi-label mb-2">Consumption</div>
           <p className="text-sm text-muted-foreground">{t.empty.needFuel}</p>
         </div>
       )}
+
 
       {seriesViews.map((sv, idx) => (
         <div key={sv.category_id} className="space-y-6">
@@ -285,8 +339,12 @@ function InsightsPage() {
               {sv.overallAvg != null && (
                 <div className="text-xs text-muted-foreground">
                   Avg {formatConsumptionUnit(sv.overallAvg, sv.unit, settings)}
+                  {sv.flaggedPoints > 0
+                    ? ` · includes ${sv.flaggedPoints} flagged ${sv.flaggedPoints === 1 ? "entry" : "entries"}`
+                    : ""}
                 </div>
               )}
+
             </div>
             <div className="h-64">
               {sv.consChartData.length === 0 ? (
