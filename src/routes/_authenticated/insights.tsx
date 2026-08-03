@@ -275,12 +275,42 @@ function InsightsPage() {
         </div>
       )}
 
+      {anomalies.flags.length > 0 && (
+        <div className="kpi-card border-l-2" style={{ borderLeftColor: "var(--color-accent)" }}>
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">
+                {anomalies.flags.length === 1
+                  ? "1 entry looks worth a check"
+                  : `${anomalies.flags.length} entries look worth a check`}
+                {fuelFlagCount > 0 && anomalies.flags.length !== fuelFlagCount
+                  ? ` (${fuelFlagCount} fuel)`
+                  : ""}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Nothing has been changed or removed — these are still counted in every figure
+                below. Open them to see what looks off and why.
+              </p>
+              <Link
+                to="/expenses"
+                hash="flagged"
+                className="inline-block mt-2 text-xs font-semibold underline underline-offset-4"
+              >
+                Review in Expenses
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {seriesViews.length === 0 && (
         <div id="consumption" className="kpi-card">
           <div className="kpi-label mb-2">Consumption</div>
           <p className="text-sm text-muted-foreground">{t.empty.needFuel}</p>
         </div>
       )}
+
 
       {seriesViews.map((sv, idx) => (
         <div key={sv.category_id} className="space-y-6">
