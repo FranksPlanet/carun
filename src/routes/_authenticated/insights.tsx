@@ -178,6 +178,17 @@ function InsightsPage() {
     [fuelSeries, expenses, currency],
   );
 
+  if (vehiclesQ.isError) {
+    return (
+      <ErrorState
+        title="Couldn't load Insights"
+        message={errorMessage(vehiclesQ.error)}
+        onRetry={() => vehiclesQ.refetch()}
+        retrying={vehiclesQ.isFetching}
+      />
+    );
+  }
+
   if (vehiclesQ.isLoading) {
     return (
       <div className="space-y-4">
