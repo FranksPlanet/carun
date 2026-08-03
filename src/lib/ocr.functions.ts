@@ -18,14 +18,23 @@ export type OcrResult = {
   liters: number | null;
   category: "fuel" | "service" | "admin" | "other" | null;
   station: string | null;
+  currency: string | null;
+  quantity_unit: string | null;
 };
 
-const SYSTEM = `You are an expert receipt parser for Czech fuel and service receipts.
-Extract only these fields and output STRICT JSON with no commentary:
-{"date":"YYYY-MM-DD or null","total":number or null (total amount in CZK as a plain number),"liters":number or null,"category":"fuel"|"service"|"admin"|"other"|null,"station":string or null}
-- "category" should be "fuel" if liters are present or it's clearly a gas station.
-- Comma is the decimal separator on Czech receipts; convert to dot.
-- If a field is missing or unreadable, use null. Do not guess.`;
+const SYSTEM = `You are an expert receipt parser. Receipts come from anywhere in the world, in any language, currency and number format.
+Output STRICT JSON only, no commentary, with exactly these fields:
+{"date":string|null,"total":number|null,"liters":number|null,"category":"fuel"|"service"|"admin"|"other"|null,"station":string|null,"currency":string|null,"quantity_unit":string|null}
+
+Rules:
+- "date": ALWAYS ISO "YYYY-MM-DD". You can see the receipt's language, country and currency — use those cues to resolve the local date convention yourself (e.g. US receipts are MM/DD/YYYY, most of the world is DD/MM/YYYY). If the date is genuinely ambiguous and the cues don't settle it, return null. Never guess.
+- "total": the total amount paid, as a plain JSON number using "." as decimal separator, with no thousands separators, currency symbols or unit suffixes. "1 615,10", "1,615.10", "1.615,10" and "1'615.10" all mean 1615.10.
+- "liters": the quantity of fuel/energy purchased, same plain-number rules. Null if not a fuel purchase.
+- "quantity_unit": the unit of that quantity as written on the receipt, normalised to one of "l", "gal", "kWh", "kg". Null if there is no fuel quantity.
+- "currency": ISO 4217 code (e.g. CZK, EUR, USD, GBP, CHF) inferred from the symbol, code or country context. Null if unclear.
+- "category": "fuel" if a fuel/charging quantity is present or it's clearly a filling/charging station; otherwise "service", "admin" or "other".
+- "station": the merchant/station name, or null.
+- Any field that is missing or unreadable must be null. Never guess.`;
 
 // Simple in-memory per-user rate limit. Stateless workers may reset this on
 // cold starts, but it bounds bursty abuse within a single instance — enough
@@ -82,6 +91,14 @@ export const scanReceipt = createServerFn({ method: "POST" })
         liters: coerceNumber(parsed.liters),
         category: parsed.category ?? null,
         station: parsed.station ?? null,
+        currency:
+          typeof parsed.currency === "string" && /^[A-Za-z]{3}$/.test(parsed.currency.trim())
+            ? parsed.currency.trim().toUpperCase()
+            : null,
+        quantity_unit:
+          typeof parsed.quantity_unit === "string" && parsed.quantity_unit.trim()
+            ? parsed.quantity_unit.trim()
+            : null,
       };
     } catch (err) {
       // Keep the raw model output diagnosable instead of failing invisibly.
@@ -89,6 +106,14 @@ export const scanReceipt = createServerFn({ method: "POST" })
         error: err instanceof Error ? err.message : String(err),
         rawText: text.slice(0, 2000),
       });
-      return { date: null, total: null, liters: null, category: null, station: null };
+      return {
+        date: null,
+        total: null,
+        liters: null,
+        category: null,
+        station: null,
+        currency: null,
+        quantity_unit: null,
+      };
     }
   });

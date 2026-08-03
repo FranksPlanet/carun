@@ -222,6 +222,11 @@ function ExpensesPage() {
       } else {
         toast.success("Receipt scanned — please review and save.");
       }
+      if (res.currency && res.currency !== currency) {
+        toast.warning(
+          `This receipt looks like it's in ${res.currency}, but this vehicle is tracked in ${currency}. The amount was not converted — please check it.`,
+        );
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "Couldn't scan receipt");
       setForm({
@@ -723,6 +728,18 @@ function ExpensesPage() {
             <DialogTitle>{form.id ? "Edit expense" : "Add expense"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {!form.id && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => scanRef.current?.click()}
+                disabled={scanning}
+              >
+                <Camera className="size-4 mr-2" />
+                {scanning ? "Scanning receipt…" : "Scan receipt"}
+              </Button>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="date">Date</Label>
@@ -869,7 +886,7 @@ function ExpensesPage() {
                 </Button>
                 <Button
                   onClick={() => saveMut.mutate(form)}
-                  disabled={saveMut.isPending || invalid}
+                  disabled={saveMut.isPending || scanning || invalid}
                 >
                   {saveMut.isPending ? "Saving…" : "Save"}
                 </Button>
