@@ -222,6 +222,11 @@ function ExpensesPage() {
       } else {
         toast.success("Receipt scanned — please review and save.");
       }
+      if (res.currency && res.currency !== currency) {
+        toast.warning(
+          `This receipt looks like it's in ${res.currency}, but this vehicle is tracked in ${currency}. The amount was not converted — please check it.`,
+        );
+      }
     } catch (e: any) {
       toast.error(e?.message ?? "Couldn't scan receipt");
       setForm({
