@@ -680,6 +680,11 @@ function ExpensesPage() {
                           : ""}
                       </div>
                     )}
+                    {(e as any).note && (
+                      <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                        {(e as any).note}
+                      </div>
+                    )}
                     {e.tags && e.tags.length > 0 && (
                       <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
                         {e.tags.join(" · ")}
