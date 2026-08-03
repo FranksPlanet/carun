@@ -144,6 +144,19 @@ export function VehicleEditDialog({ vehicle, trigger }: Props) {
               Used for honest depreciation-based cost/km. Leave empty to skip the depreciation view.
             </p>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="pvat">Purchase VAT rate (%)</Label>
+            <Input
+              id="pvat"
+              inputMode="decimal"
+              value={purchaseVat}
+              onChange={(e) => setPurchaseVat(e.target.value)}
+              placeholder="e.g. 21 — leave empty if unknown"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used when you view prices excluding VAT. Empty means unknown.
+            </p>
+          </div>
 
           <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 space-y-3">
             <div className="flex items-center gap-2 text-destructive font-medium text-sm">
