@@ -177,6 +177,17 @@ function Dashboard() {
     return { items, max };
   }, [expenses, categories]);
 
+  if (vehiclesQ.isError) {
+    return (
+      <ErrorState
+        title="Couldn't load your garage"
+        message={errorMessage(vehiclesQ.error)}
+        onRetry={() => vehiclesQ.refetch()}
+        retrying={vehiclesQ.isFetching}
+      />
+    );
+  }
+
   if (vehiclesQ.isLoading || profileQ.isLoading || !vehiclesQ.isSuccess) {
     return (
       <div className="space-y-4">
