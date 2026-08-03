@@ -728,6 +728,18 @@ function ExpensesPage() {
             <DialogTitle>{form.id ? "Edit expense" : "Add expense"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
+            {!form.id && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => scanRef.current?.click()}
+                disabled={scanning}
+              >
+                <Camera className="size-4 mr-2" />
+                {scanning ? "Scanning receipt…" : "Scan receipt"}
+              </Button>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="date">Date</Label>
