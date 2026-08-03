@@ -18,8 +18,11 @@ import {
   updateExpense,
   deleteExpense,
 } from "@/lib/expenses.functions";
+import { setAnomalyDismissed } from "@/lib/expenses.functions";
+import { detectAnomalies, flagsByExpense } from "@/lib/anomalies";
 import { getProfile } from "@/lib/profile.functions";
 import { applyVatView, vatSplit, vatTotals } from "@/lib/vat";
+
 import {
   consumptionSeries,
   totalLogged,
@@ -62,7 +65,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Download, Camera, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Download, Camera, Upload, AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
 import { t } from "@/lib/strings";
 import { scanReceipt } from "@/lib/ocr.functions";
@@ -192,6 +195,28 @@ function ExpensesPage() {
       for (const pt of s.points) m.set(pt.odometer_km, { per100km: pt.per_100km, unit: s.unit });
     return m;
   }, [expenses, categories]);
+
+  // Anomaly flags are computed from the RAW rows: consumption, odometer and
+  // dates are unaffected by the VAT view, and duplicate detection should see
+  // the amounts as they were entered.
+  const anomalyMap = useMemo(() => {
+    if (rawExpenses.length === 0 || categories.length === 0) return new Map();
+    const series = consumptionSeries(rawExpenses, categories as any);
+    return flagsByExpense(detectAnomalies(rawExpenses as any, series, categories as any));
+  }, [rawExpenses, categories]);
+  const [openFlagId, setOpenFlagId] = useState<string | null>(null);
+
+  const dismissFn = useServerFn(setAnomalyDismissed);
+  const dismissMut = useMutation({
+    mutationFn: (id: string) => dismissFn({ data: { id, dismissed: true } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["expenses", vehicle?.id] });
+      setOpenFlagId(null);
+      toast.success("Noted — we won't flag this entry again");
+    },
+    onError: (e: any) => toast.error(errorMessage(e, "Couldn't dismiss")),
+  });
+
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(() => emptyForm(""));
@@ -711,7 +736,8 @@ function ExpensesPage() {
       </div>
 
       {/* List */}
-      <div className="kpi-card">
+      <div className="kpi-card scroll-mt-20" id="flagged">
+
         {expensesQ.isError ? (
           <ErrorState
             compact
@@ -747,6 +773,12 @@ function ExpensesPage() {
               const isFuel = cat?.role === "fuel";
               const cons = isFuel ? consPointsByOdo.get(e.odometer_km) ?? null : null;
               const fallbackColor = cat?.color ?? "var(--color-muted)";
+              const flags = (anomalyMap.get(e.id) ?? []) as {
+                kind: string;
+                message: string;
+              }[];
+              const flagOpen = openFlagId === e.id;
+
               return (
                 <li key={e.id} className="py-3 grid grid-cols-[auto_minmax(0,1fr)_auto] sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-x-3 gap-y-1">
                   <div
@@ -764,7 +796,20 @@ function ExpensesPage() {
                       <span className="text-xs text-muted-foreground">
                         · {formatDistance(e.odometer_km, settings)}
                       </span>
+                      {flags.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setOpenFlagId(flagOpen ? null : e.id)}
+                          aria-expanded={flagOpen}
+                          aria-label={`${flags.length} thing${flags.length > 1 ? "s" : ""} to check on this entry`}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 min-h-6 rounded-[2px] border border-border bg-accent/25 text-[10px] font-medium uppercase tracking-wide"
+                        >
+                          <AlertTriangle className="size-3" />
+                          {flags.length > 1 ? `${flags.length} to check` : "Check this"}
+                        </button>
+                      )}
                     </div>
+
                     {isFuel && e.quantity != null && (
                       <div className="text-xs text-muted-foreground">
                         {formatQuantity(e.quantity, cat?.unit ?? "l", settings)}
@@ -783,7 +828,38 @@ function ExpensesPage() {
                         {e.tags.join(" · ")}
                       </div>
                     )}
+                    {flagOpen && flags.length > 0 && (
+                      <div className="mt-2 border border-border bg-accent/15 p-2.5 space-y-2">
+                        {flags.map((f, i) => (
+                          <p key={i} className="text-xs leading-relaxed">
+                            {f.message}
+                          </p>
+                        ))}
+                        <div className="flex items-center gap-2 pt-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8"
+                            disabled={dismissMut.isPending}
+                            onClick={() => dismissMut.mutate(e.id)}
+                          >
+                            <X className="size-3.5 mr-1" /> This one's fine
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-8"
+                            onClick={() => openEdit(e)}
+                          >
+                            Edit entry
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
+
                   <div className="whitespace-nowrap font-semibold num tabular-nums text-right col-start-3 sm:col-start-auto">
                     {formatMoney(e.amount_minor, moneySettings)}
                   </div>

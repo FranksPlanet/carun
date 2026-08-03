@@ -1,0 +1,1 @@
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS anomaly_dismissed boolean NOT NULL DEFAULT false;

@@ -102,7 +102,24 @@ export const updateExpense = createServerFn({ method: "POST" })
     return out;
   });
 
+// Silences the anomaly warnings on one row. Never deletes or alters the
+// underlying data — the flags are simply hidden from now on.
+export const setAnomalyDismissed = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), dismissed: z.boolean() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("expenses")
+      .update({ anomaly_dismissed: data.dismissed })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const deleteExpense = createServerFn({ method: "POST" })
+
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
