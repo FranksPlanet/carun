@@ -886,7 +886,7 @@ function ExpensesPage() {
                 </Button>
                 <Button
                   onClick={() => saveMut.mutate(form)}
-                  disabled={saveMut.isPending || invalid}
+                  disabled={saveMut.isPending || scanning || invalid}
                 >
                   {saveMut.isPending ? "Saving…" : "Save"}
                 </Button>
