@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ErrorState, errorMessage } from "@/components/error-state";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -267,7 +268,7 @@ function ExpensesPage() {
       setDialogOpen(false);
       toast.success("Saved");
     },
-    onError: (e: any) => toast.error(e.message ?? "Failed to save"),
+    onError: (e: any) => toast.error(errorMessage(e, "Failed to save")),
   });
 
   const deleteMut = useMutation({
@@ -276,7 +277,7 @@ function ExpensesPage() {
       qc.invalidateQueries({ queryKey: ["expenses", vehicle?.id] });
       toast.success("Deleted");
     },
-    onError: (e: any) => toast.error(e.message ?? "Failed to delete"),
+    onError: (e: any) => toast.error(errorMessage(e, "Failed to delete")),
   });
 
   function openAdd() {
@@ -364,6 +365,18 @@ function ExpensesPage() {
       .slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  if (vehiclesQ.isError || categoriesQ.isError) {
+    const q = vehiclesQ.isError ? vehiclesQ : categoriesQ;
+    return (
+      <ErrorState
+        title="Couldn't load Expenses"
+        message={errorMessage(q.error)}
+        onRetry={() => q.refetch()}
+        retrying={q.isFetching}
+      />
+    );
   }
 
   if (vehiclesQ.isLoading || categoriesQ.isLoading) {
@@ -632,7 +645,15 @@ function ExpensesPage() {
 
       {/* List */}
       <div className="kpi-card">
-        {expensesQ.isLoading ? (
+        {expensesQ.isError ? (
+          <ErrorState
+            compact
+            title="Couldn't load expenses"
+            message={errorMessage(expensesQ.error)}
+            onRetry={() => expensesQ.refetch()}
+            retrying={expensesQ.isFetching}
+          />
+        ) : expensesQ.isLoading ? (
           <ul className="divide-y divide-border">
             {[0, 1, 2].map((i) => (
               <li key={i} className="py-3 flex items-center gap-3">

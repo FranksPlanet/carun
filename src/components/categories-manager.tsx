@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ErrorState, errorMessage } from "@/components/error-state";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -166,7 +167,15 @@ export function CategoriesManager() {
         </Button>
       </div>
 
-      {catsQ.isLoading ? (
+      {catsQ.isError ? (
+        <ErrorState
+          compact
+          title="Couldn't load categories"
+          message={errorMessage(catsQ.error)}
+          onRetry={() => catsQ.refetch()}
+          retrying={catsQ.isFetching}
+        />
+      ) : catsQ.isLoading ? (
         <ul className="space-y-2">
           {[0, 1, 2].map((i) => (
             <li key={i} className="h-14 rounded-lg bg-muted/40 animate-pulse" />

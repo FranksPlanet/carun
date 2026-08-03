@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ErrorState, errorMessage } from "@/components/error-state";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -176,6 +177,17 @@ function InsightsPage() {
       })),
     [fuelSeries, expenses, currency],
   );
+
+  if (vehiclesQ.isError) {
+    return (
+      <ErrorState
+        title="Couldn't load Insights"
+        message={errorMessage(vehiclesQ.error)}
+        onRetry={() => vehiclesQ.refetch()}
+        retrying={vehiclesQ.isFetching}
+      />
+    );
+  }
 
   if (vehiclesQ.isLoading) {
     return (

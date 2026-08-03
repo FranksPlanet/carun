@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ErrorState, errorMessage } from "@/components/error-state";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -95,6 +96,16 @@ function SettingsPage() {
       <h1 className="text-2xl font-semibold flex items-center gap-2">
         <SettingsIcon className="size-6" aria-hidden /> {t.nav.settings}
       </h1>
+
+      {profileQ.isError && (
+        <ErrorState
+          compact
+          title="Couldn't load your settings"
+          message={errorMessage(profileQ.error)}
+          onRetry={() => profileQ.refetch()}
+          retrying={profileQ.isFetching}
+        />
+      )}
 
       <section className="kpi-card space-y-3">
         <h2 className="font-semibold flex items-center gap-2">

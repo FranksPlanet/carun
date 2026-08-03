@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ErrorState, errorMessage } from "@/components/error-state";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listVehicles } from "@/lib/vehicles.functions";
@@ -176,6 +177,17 @@ function Dashboard() {
     const max = items[0]?.amount ?? 0;
     return { items, max };
   }, [expenses, categories]);
+
+  if (vehiclesQ.isError) {
+    return (
+      <ErrorState
+        title="Couldn't load your garage"
+        message={errorMessage(vehiclesQ.error)}
+        onRetry={() => vehiclesQ.refetch()}
+        retrying={vehiclesQ.isFetching}
+      />
+    );
+  }
 
   if (vehiclesQ.isLoading || profileQ.isLoading || !vehiclesQ.isSuccess) {
     return (
