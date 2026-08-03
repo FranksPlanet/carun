@@ -23,6 +23,7 @@ type Props = {
     name: string;
     currency: string;
     estimated_resale_value_minor: number | null;
+    purchase_vat_rate?: number | null;
   };
   trigger: React.ReactNode;
 };
@@ -38,6 +39,9 @@ export function VehicleEditDialog({ vehicle, trigger }: Props) {
       ? String(moneyMinorToMajor(vehicle.estimated_resale_value_minor, vehicle.currency))
       : "";
   const [resale, setResale] = useState(initialResale);
+  const initialVat =
+    vehicle.purchase_vat_rate != null ? String(Number(vehicle.purchase_vat_rate)) : "";
+  const [purchaseVat, setPurchaseVat] = useState(initialVat);
   const [saving, setSaving] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -47,6 +51,7 @@ export function VehicleEditDialog({ vehicle, trigger }: Props) {
     if (open) {
       setName(vehicle.name);
       setResale(initialResale);
+      setPurchaseVat(initialVat);
       setConfirmOpen(false);
       setConfirmText("");
     }
@@ -59,6 +64,16 @@ export function VehicleEditDialog({ vehicle, trigger }: Props) {
       toast.error("Name is required");
       return;
     }
+    const vatTrimmed = purchaseVat.trim();
+    let vatRate: number | null = null;
+    if (vatTrimmed) {
+      const parsed = parseLocalNumber(vatTrimmed);
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) {
+        toast.error("VAT rate must be between 0 and 100");
+        return;
+      }
+      vatRate = parsed;
+    }
     setSaving(true);
     try {
       const trimmed = resale.trim();
@@ -70,6 +85,7 @@ export function VehicleEditDialog({ vehicle, trigger }: Props) {
           id: vehicle.id,
           name: trimmedName,
           estimated_resale_value_minor: minor,
+          purchase_vat_rate: vatRate,
         },
       });
       await qc.invalidateQueries({ queryKey: ["vehicles"] });
@@ -81,6 +97,7 @@ export function VehicleEditDialog({ vehicle, trigger }: Props) {
       setSaving(false);
     }
   }
+
 
   async function onDelete() {
     if (confirmText !== "DELETE") return;
