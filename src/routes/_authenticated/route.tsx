@@ -12,6 +12,42 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { t } from "@/lib/strings";
+import { useEffect } from "react";
+import { useRouter } from "@tanstack/react-router";
+import { reportLovableError } from "@/lib/lovable-error-reporting";
+import { ErrorState, errorMessage } from "@/components/error-state";
+
+/**
+ * Catches unexpected render/loader errors anywhere under /_authenticated so the
+ * user gets an actionable message instead of a blank screen.
+ */
+function AuthErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+  const router = useRouter();
+  useEffect(() => {
+    console.error(error);
+    reportLovableError(error, { boundary: "authenticated_route_error_component" });
+  }, [error]);
+
+  return (
+    <div className="min-h-dvh grid place-items-center bg-background p-4">
+      <div className="w-full max-w-md space-y-3">
+        <ErrorState
+          title="Something went wrong"
+          message={errorMessage(error, "This screen hit an unexpected error.")}
+          onRetry={() => {
+            router.invalidate();
+            reset();
+          }}
+        />
+        <div className="text-center">
+          <a href="/dashboard" className="text-sm underline text-muted-foreground">
+            Go to dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -21,6 +57,7 @@ export const Route = createFileRoute("/_authenticated")({
     return { user: data.user };
   },
   component: AuthLayout,
+  errorComponent: AuthErrorComponent,
 });
 
 const topLinks = [
