@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import { t } from "@/lib/strings";
-import { parseLocalNumber } from "@/lib/format";
+import { parseLocalNumber, todayLocalISO } from "@/lib/format";
 
 const FUEL_TYPES = ["diesel", "petrol", "lpg", "hybrid", "electric"] as const;
 type FuelType = (typeof FUEL_TYPES)[number];
@@ -85,7 +85,7 @@ function OnboardingPage() {
   const [currentOdo, setCurrentOdo] = useState("0");
 
   // Step 2
-  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [purchaseDate, setPurchaseDate] = useState(todayLocalISO());
   const [purchaseOdo, setPurchaseOdo] = useState("0");
   const [purchasePrice, setPurchasePrice] = useState("0");
   const [resaleValue, setResaleValue] = useState("");

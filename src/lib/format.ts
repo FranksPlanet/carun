@@ -185,7 +185,20 @@ export function parseLocalNumber(input: string): number {
   return parseFloat(cleaned);
 }
 
+/**
+ * Today's date as YYYY-MM-DD in the *user's local* timezone.
+ * `new Date().toISOString().slice(0,10)` is UTC and yields the wrong day for
+ * anyone east of UTC in the evening or west of UTC in the early morning.
+ */
+export function todayLocalISO(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function formatDate(iso: string, settings: ProfileSettings = defaultSettings): string {
+
   if (!iso) return "";
   const d = new Date(iso.length === 10 ? `${iso}T00:00:00` : iso);
   if (isNaN(+d)) return iso;
