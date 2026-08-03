@@ -367,6 +367,18 @@ function ExpensesPage() {
     URL.revokeObjectURL(url);
   }
 
+  if (vehiclesQ.isError || categoriesQ.isError) {
+    const q = vehiclesQ.isError ? vehiclesQ : categoriesQ;
+    return (
+      <ErrorState
+        title="Couldn't load Expenses"
+        message={errorMessage(q.error)}
+        onRetry={() => q.refetch()}
+        retrying={q.isFetching}
+      />
+    );
+  }
+
   if (vehiclesQ.isLoading || categoriesQ.isLoading) {
     return (
       <div className="space-y-3">
