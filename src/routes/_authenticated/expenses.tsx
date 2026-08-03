@@ -268,7 +268,7 @@ function ExpensesPage() {
       setDialogOpen(false);
       toast.success("Saved");
     },
-    onError: (e: any) => toast.error(e.message ?? "Failed to save"),
+    onError: (e: any) => toast.error(errorMessage(e, "Failed to save")),
   });
 
   const deleteMut = useMutation({
