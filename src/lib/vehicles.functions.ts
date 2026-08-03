@@ -15,6 +15,7 @@ const CreateVehicleSchema = z.object({
   current_odometer_km: z.number().int().min(0).max(2_000_000).default(0),
   photo_path: z.string().max(500).optional().nullable(),
   estimated_resale_value_minor: z.number().int().min(0).optional().nullable(),
+  purchase_vat_rate: z.number().min(0).max(100).optional().nullable(),
 });
 
 export const listVehicles = createServerFn({ method: "GET" })

@@ -34,6 +34,7 @@ import {
   defaultMaintenancePerKm,
   type ExpenseRow,
 } from "@/lib/calc";
+import { applyVatView, vatSplit } from "@/lib/vat";
 import {
   defaultSettings,
   formatConsumption,
@@ -118,6 +119,7 @@ function InsightsPage() {
   const settings = profileQ.data ?? defaultSettings;
   const currency = vehicle?.currency ?? settings.currency;
   const moneySettings = { ...settings, currency };
+  const exVat = Boolean((profileQ.data as any)?.show_prices_ex_vat);
   // Map the joined category role onto every row. The server already flattens
   // role, but we re-map from the local categories list as a belt-and-braces
   // guarantee — calc.ts identifies fuel by `role === 'fuel'`, so a missing
@@ -125,11 +127,24 @@ function InsightsPage() {
   const expenses = useMemo<ExpenseRow[]>(() => {
     const raw = (expensesQ.data ?? []) as any[];
     const byId = new Map(categories.map((c: CategoryRow) => [c.id, c.role] as const));
-    return raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
-  }, [expensesQ.data, categories]);
+    const mapped = raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
+    // VAT view applied before calc.ts sees anything — calc stays VAT-unaware.
+    return applyVatView(mapped, exVat);
+  }, [expensesQ.data, categories, exVat]);
 
   const recurring = (recurringQ.data ?? []) as { amount_minor_per_year: number }[];
   const repairs = (repairsQ.data ?? []) as { amount_minor: number }[];
+
+  // The purchase price participates in the VAT view too.
+  const vehicleV = useMemo(() => {
+    if (!vehicle) return vehicle;
+    if (!exVat) return vehicle;
+    const net = vatSplit(
+      vehicle.purchase_price_minor,
+      (vehicle as any).purchase_vat_rate ?? null,
+    ).net;
+    return { ...vehicle, purchase_price_minor: net };
+  }, [vehicle, exVat]);
 
 
   const fuelSeries = useMemo(
@@ -139,19 +154,19 @@ function InsightsPage() {
 
   const lifetime = useMemo(
     () =>
-      vehicle
+      vehicleV
         ? lifetimeBreakdown(
             {
-              purchase_date: vehicle.purchase_date,
-              purchase_odometer_km: vehicle.purchase_odometer_km,
-              purchase_price_minor: vehicle.purchase_price_minor,
+              purchase_date: vehicleV.purchase_date,
+              purchase_odometer_km: vehicleV.purchase_odometer_km,
+              purchase_price_minor: vehicleV.purchase_price_minor,
             },
             expenses,
             recurring,
             repairs,
           )
         : null,
-    [vehicle, expenses, recurring, repairs],
+    [vehicleV, expenses, recurring, repairs],
   );
 
   // One bundle of derived chart data per fuel-role category.
@@ -381,7 +396,9 @@ function InsightsPage() {
       {lifetime && (
         <div id="lifetime" className="kpi-card">
           <div className="flex items-baseline justify-between gap-2 flex-wrap mb-3">
-            <div className="kpi-label">Lifetime cost (with backfill)</div>
+            <div className="kpi-label">
+              Lifetime cost (with backfill) · {exVat ? "excl. VAT" : "incl. VAT"}
+            </div>
             <div className="text-xs text-muted-foreground">
               Gap: {formatDistance(lifetime.gap_km, settings)} ·{" "}
               {lifetime.gap_years.toFixed(1)} yr
@@ -480,7 +497,7 @@ function InsightsPage() {
 
       {vehicle && (
         <ProjectionSection
-          vehicle={vehicle}
+          vehicle={vehicleV}
           expenses={expenses}
           categories={categories}
           recurring={recurring}

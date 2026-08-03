@@ -19,6 +19,7 @@ import {
   deleteExpense,
 } from "@/lib/expenses.functions";
 import { getProfile } from "@/lib/profile.functions";
+import { applyVatView, vatSplit, vatTotals } from "@/lib/vat";
 import {
   consumptionSeries,
   totalLogged,
@@ -92,6 +93,7 @@ type FormState = {
   full_tank: boolean;
   tags: string[];
   note: string;
+  vat_rate: string;
 };
 
 const emptyForm = (categoryId: string): FormState => ({
@@ -103,6 +105,7 @@ const emptyForm = (categoryId: string): FormState => ({
   full_tank: true,
   tags: [],
   note: "",
+  vat_rate: "21",
 });
 
 function ExpensesPage() {
@@ -132,10 +135,21 @@ function ExpensesPage() {
   const settings = profileQ.data ?? defaultSettings;
   const currency = vehicle?.currency ?? settings.currency;
   const moneySettings = { ...settings, currency };
-  const expenses = (expensesQ.data ?? []) as unknown as ExpenseRow[];
+  const exVat = Boolean((profileQ.data as any)?.show_prices_ex_vat);
+  const rawExpenses = (expensesQ.data ?? []) as unknown as ExpenseRow[];
+  const expenses = useMemo(
+    () => applyVatView(rawExpenses as any[], exVat) as unknown as ExpenseRow[],
+    [rawExpenses, exVat],
+  );
+  const rawById = useMemo(
+    () => new Map(rawExpenses.map((e) => [e.id, e] as const)),
+    [rawExpenses],
+  );
+  const vatSummary = useMemo(() => vatTotals(rawExpenses as any[]), [rawExpenses]);
 
   const fuelDefault = defaultForRole(categories, "fuel");
   const otherDefault = defaultForRole(categories, "other") ?? categories[0];
+
 
   const stats = useMemo(() => {
     const by: Record<string, number> = {};
@@ -257,6 +271,10 @@ function ExpensesPage() {
         full_tank: isFuel ? f.full_tank : null,
         tags: isFuel ? f.tags : [],
         note: f.note || null,
+        vat_rate:
+          f.vat_rate.trim() === "" || !isFinite(parseLocalNumber(f.vat_rate))
+            ? null
+            : parseLocalNumber(f.vat_rate),
       };
       if (f.id) {
         return updateFn({ data: { id: f.id, ...payload } });
@@ -308,7 +326,9 @@ function ExpensesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicle?.id, categories.length]);
 
-  function openEdit(e: ExpenseRow) {
+  function openEdit(row: ExpenseRow) {
+    // Always edit the raw (gross) row, never the VAT-transformed view.
+    const e = (rawById.get(row.id) ?? row) as any;
     setForm({
       id: e.id,
       date: e.date,
@@ -318,7 +338,8 @@ function ExpensesPage() {
       quantity: e.quantity != null ? String(e.quantity) : "",
       full_tank: !!e.full_tank,
       tags: e.tags ?? [],
-      note: (e as any).note ?? "",
+      note: e.note ?? "",
+      vat_rate: e.vat_rate != null ? String(Number(e.vat_rate)) : "",
     });
     setDialogOpen(true);
   }
@@ -480,6 +501,46 @@ function ExpensesPage() {
           ))}
         </div>
       )}
+
+      {/* VAT summary */}
+      {rawExpenses.length > 0 && (
+        <div className="kpi-card">
+          <div className="flex items-baseline justify-between gap-2 flex-wrap">
+            <div className="text-sm font-semibold">VAT</div>
+            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {exVat ? "Showing prices excl. VAT" : "Showing prices incl. VAT"}
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            <span>
+              <span className="text-muted-foreground">Paid </span>
+              <span className="num tabular-nums font-semibold">
+                {formatMoney(vatSummary.gross, moneySettings)}
+              </span>
+            </span>
+            <span>
+              <span className="text-muted-foreground">Net </span>
+              <span className="num tabular-nums font-semibold">
+                {formatMoney(vatSummary.net, moneySettings)}
+              </span>
+            </span>
+            <span>
+              <span className="text-muted-foreground">VAT </span>
+              <span className="num tabular-nums font-semibold">
+                {formatMoney(vatSummary.vat, moneySettings)}
+              </span>
+            </span>
+          </div>
+          {vatSummary.unknownCount > 0 && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {vatSummary.unknownCount} expense{vatSummary.unknownCount === 1 ? "" : "s"} (
+              {formatMoney(vatSummary.unknownGross, moneySettings)}) have no VAT rate set, so the
+              VAT total above is understated.
+            </p>
+          )}
+        </div>
+      )}
+
 
       {/* Breakdown */}
       <div className="grid md:grid-cols-2 gap-4">
@@ -823,6 +884,38 @@ function ExpensesPage() {
                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
               />
             </div>
+
+            <div>
+              <Label htmlFor="vat">VAT rate (%)</Label>
+              <Input
+                id="vat"
+                inputMode="decimal"
+                placeholder="Leave empty if unknown"
+                value={form.vat_rate}
+                onChange={(e) => setForm({ ...form, vat_rate: e.target.value })}
+              />
+              {(() => {
+                const rateStr = form.vat_rate.trim();
+                const rate = parseLocalNumber(rateStr);
+                if (rateStr === "" || !isFinite(rate)) {
+                  return (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      VAT unknown — the amount counts as paid in full.
+                    </div>
+                  );
+                }
+                if (!isFinite(amountNum) || amountNum <= 0) return null;
+                const s = vatSplit(moneyMajorToMinor(amountNum, currency), rate);
+                return (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Net {formatMoney(s.net, moneySettings)} · VAT{" "}
+                    {formatMoney(s.vat, moneySettings)}
+                  </div>
+                );
+              })()}
+            </div>
+
+
 
             {selectedIsFuel && (
               <>
