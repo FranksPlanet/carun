@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { consumptionSeries, type CategoryRow, type ExpenseRow } from "@/lib/calc";
 import {
   detectAnomalies,
+  detectBeforePurchaseAnomalies,
+  detectPriceMagnitudeAnomalies,
   detectDuplicateAnomalies,
   detectOdometerAnomalies,
   type AnomalyInputRow,
@@ -84,9 +86,33 @@ describe("consumption outliers", () => {
     expect(flags[0].message).toMatch(/higher than any vehicle/i);
   });
 
-  it("does not fire the relative rule below the minimum sample", () => {
+  it("catches a small-sample low outlier via leave-one-out (3 points)", () => {
     const rows = chain([8.5, 8.6, 4.5]);
-    expect(run(rows).filter((f) => f.kind === "consumption_low")).toHaveLength(0);
+    const low = run(rows).filter((f) => f.kind === "consumption_low");
+    expect(low).toHaveLength(1);
+    expect(low[0].expense_id).toBe(rows[rows.length - 1].id);
+  });
+
+  it("catches the two-point real-world case [8.6, 4.2]", () => {
+    const rows = chain([8.6, 4.2]);
+    const low = run(rows).filter((f) => f.kind === "consumption_low");
+    expect(low).toHaveLength(1);
+    expect(low[0].expense_id).toBe(rows[rows.length - 1].id);
+    expect(low[0].message).toMatch(/missing/i);
+  });
+
+  it("stays silent on the corrected real data [8.6, 8.22, 8.22]", () => {
+    expect(run(chain([8.6, 8.22, 8.22]))).toEqual([]);
+  });
+
+  it("catches a small-sample high outlier", () => {
+    const rows = chain([8.5, 18]);
+    const high = run(rows).filter((f) => f.kind === "consumption_high");
+    expect(high).toHaveLength(1);
+  });
+
+  it("does not compare a single-point series against anything", () => {
+    expect(run(chain([8.6]))).toEqual([]);
   });
 
   it("hides flags on dismissed rows but keeps them with includeDismissed", () => {
@@ -138,5 +164,65 @@ describe("duplicates", () => {
     const a = fill(100_000, 50, "2026-01-01");
     const b = { ...fill(100_400, 40, "2026-01-01") };
     expect(detectDuplicateAnomalies([a, b])).toEqual([]);
+  });
+});
+
+describe("expense before purchase date", () => {
+  it("flags an expense dated before the car was bought", () => {
+    const rows = [fill(100_000, 50, "2024-07-01"), fill(100_600, 50, "2026-07-05")];
+    const flags = detectBeforePurchaseAnomalies(rows, { purchase_date: "2026-06-26" });
+    expect(flags).toHaveLength(1);
+    expect(flags[0].expense_id).toBe(rows[0].id);
+    expect(flags[0].kind).toBe("before_purchase");
+    expect(flags[0].message).toMatch(/year/i);
+  });
+
+  it("accepts entries on or after the purchase date", () => {
+    const rows = [fill(100_000, 50, "2026-06-26"), fill(100_600, 50, "2026-07-05")];
+    expect(detectBeforePurchaseAnomalies(rows, { purchase_date: "2026-06-26" })).toEqual([]);
+  });
+});
+
+describe("order-of-magnitude price", () => {
+  /** Build a fuel row at an exact price per litre. */
+  function atPrice(pricePerL: number, odo: number, date: string): AnomalyInputRow {
+    const qty = 50;
+    const row = fill(odo, qty, date);
+    row.amount_minor = Math.round(pricePerL * 100 * qty);
+    return row;
+  }
+
+  it("stays silent across a genuine 33.50-51.33 Kc/l spread", () => {
+    const rows = [
+      atPrice(33.5, 100_000, "2026-01-01"),
+      atPrice(38.9, 100_600, "2026-01-15"),
+      atPrice(44.2, 101_200, "2026-02-01"),
+      atPrice(51.33, 101_800, "2026-02-15"),
+    ];
+    expect(detectPriceMagnitudeAnomalies(rows)).toEqual([]);
+  });
+
+  it("flags a currency mix-up (137 EUR typed as 137 CZK)", () => {
+    const rows = [
+      atPrice(33.5, 100_000, "2026-01-01"),
+      atPrice(38.9, 100_600, "2026-01-15"),
+      atPrice(44.2, 101_200, "2026-02-01"),
+      atPrice(51.33, 101_800, "2026-02-15"),
+      atPrice(1.5, 102_400, "2026-03-01"),
+    ];
+    const flags = detectPriceMagnitudeAnomalies(rows);
+    expect(flags).toHaveLength(1);
+    expect(flags[0].expense_id).toBe(rows[4].id);
+    expect(flags[0].severity).toBe("info");
+    expect(flags[0].message).toMatch(/currency/i);
+  });
+
+  it("skips the price rule without enough baseline points", () => {
+    const rows = [
+      atPrice(40, 100_000, "2026-01-01"),
+      atPrice(40, 100_600, "2026-01-15"),
+      atPrice(1.5, 101_200, "2026-02-01"),
+    ];
+    expect(detectPriceMagnitudeAnomalies(rows)).toEqual([]);
   });
 });

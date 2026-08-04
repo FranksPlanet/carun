@@ -202,8 +202,10 @@ function ExpensesPage() {
   const anomalyMap = useMemo(() => {
     if (rawExpenses.length === 0 || categories.length === 0) return new Map();
     const series = consumptionSeries(rawExpenses, categories as any);
-    return flagsByExpense(detectAnomalies(rawExpenses as any, series, categories as any));
-  }, [rawExpenses, categories]);
+    return flagsByExpense(
+      detectAnomalies(rawExpenses as any, series, categories as any, {}, vehicle ?? null),
+    );
+  }, [rawExpenses, categories, vehicle]);
   const [openFlagId, setOpenFlagId] = useState<string | null>(null);
 
   const dismissFn = useServerFn(setAnomalyDismissed);

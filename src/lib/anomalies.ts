@@ -10,14 +10,16 @@
 //  - never assume a locale, fuel type or vehicle type
 //  - messages name the likely CAUSE and the check to make
 
-import type { CategoryRow, ExpenseRow, FuelSeries } from "./calc";
+import type { CategoryRow, ExpenseRow, FuelSeries, VehicleRow } from "./calc";
 
 export type AnomalyKind =
   | "consumption_low"
   | "consumption_high"
   | "consumption_out_of_bounds"
   | "odometer_backwards"
-  | "duplicate";
+  | "duplicate"
+  | "before_purchase"
+  | "price_magnitude";
 
 export type AnomalySeverity = "warning" | "info";
 
@@ -49,10 +51,24 @@ export const ABSOLUTE_BOUNDS: Record<string, { min: number; max: number }> = {
 // (median/MAD) test is allowed to fire at all.
 export const MIN_RELATIVE_SAMPLE = 4;
 
+// Below MIN_RELATIVE_SAMPLE (but with at least 2 points) we use a
+// leave-one-out ratio test instead: a point is compared against the median of
+// the OTHER points, so a single bad reading can't drag the baseline toward
+// itself. Single-point series rely on absolute bounds only.
+export const SMALL_SAMPLE_LOW_RATIO = 0.6;
+export const SMALL_SAMPLE_HIGH_RATIO = 1.7;
+
+// Order-of-magnitude price check: only fires at 3x / 1/3x, which real-world
+// station-to-station and cross-border price spreads never reach.
+export const PRICE_LOW_RATIO = 1 / 3;
+export const PRICE_HIGH_RATIO = 3;
+export const MIN_PRICE_BASELINE = 3;
+
 // Modified z-score cut-off (0.6745 * deviation / MAD). 3.5 is the standard
 // Iglewicz–Hoaglin threshold; we use a slightly looser 4 so normal seasonal
 // swings (winter/towing) don't nag.
 export const MODIFIED_Z_THRESHOLD = 4;
+
 
 export function median(xs: number[]): number {
   if (xs.length === 0) return NaN;
@@ -131,12 +147,30 @@ export function detectConsumptionAnomalies(
       }
 
       // Rule 1 + 3 — relative outlier, direction implies cause.
-      if (!canRelative) continue;
-      const z = (0.6745 * (p.per_100km - med)) / dev;
-      if (Math.abs(z) <= MODIFIED_Z_THRESHOLD) continue;
+      let direction: "low" | "high" | null = null;
+      let normValue = med;
 
-      const normText = `${fmtQty(med)} ${label}/100 km`;
-      if (z < 0) {
+      if (canRelative) {
+        const z = (0.6745 * (p.per_100km - med)) / dev;
+        if (z < -MODIFIED_Z_THRESHOLD) direction = "low";
+        else if (z > MODIFIED_Z_THRESHOLD) direction = "high";
+      } else if (values.length >= 2) {
+        // Small sample: leave-one-out ratio. Including the suspect point would
+        // drag the baseline toward it and hide exactly the case we care about.
+        const others = s.points.filter((q) => q !== p).map((q) => q.per_100km);
+        const otherMed = median(others);
+        if (isFinite(otherMed) && otherMed > 0) {
+          const ratio = p.per_100km / otherMed;
+          normValue = otherMed;
+          if (ratio < SMALL_SAMPLE_LOW_RATIO) direction = "low";
+          else if (ratio > SMALL_SAMPLE_HIGH_RATIO) direction = "high";
+        }
+      }
+
+      if (!direction) continue;
+
+      const normText = `${fmtQty(normValue)} ${label}/100 km`;
+      if (direction === "low") {
         flags.push({
           expense_id: expense.id,
           severity: "warning",
@@ -151,6 +185,7 @@ export function detectConsumptionAnomalies(
           message: `${valueText} here, against a typical ${normText} for this vehicle. A figure this far above normal usually means the odometer reading is too low, or this fill-up was entered twice. Check the ${fmtInt(p.odometer_km)} km reading and look for a duplicate.`,
         });
       }
+
     }
   }
 
@@ -207,6 +242,70 @@ export function detectDuplicateAnomalies(expenses: AnomalyInputRow[]): AnomalyFl
   return flags;
 }
 
+/**
+ * Rule 6 — expense dated before the vehicle was bought. Overwhelmingly a
+ * misread or mistyped year (OCR reading 2024 for 2026, for instance).
+ */
+export function detectBeforePurchaseAnomalies(
+  expenses: AnomalyInputRow[],
+  vehicle: Pick<VehicleRow, "purchase_date">,
+): AnomalyFlag[] {
+  const purchase = vehicle.purchase_date;
+  if (!purchase) return [];
+  const flags: AnomalyFlag[] = [];
+  for (const e of expenses) {
+    if (e.date >= purchase) continue;
+    flags.push({
+      expense_id: e.id,
+      severity: "warning",
+      kind: "before_purchase",
+      message: `This is dated ${e.date}, before you bought the car on ${purchase}. Almost always the year is wrong — a scanned receipt misread, or a typo. Check the date on the receipt.`,
+    });
+  }
+  return flags;
+}
+
+/**
+ * Rule 7 — order-of-magnitude price error, e.g. a foreign-currency amount
+ * typed into a field labelled in the vehicle's currency. Deliberately blunt:
+ * genuine station-to-station and cross-border spreads stay well inside 3x.
+ */
+export function detectPriceMagnitudeAnomalies(expenses: AnomalyInputRow[]): AnomalyFlag[] {
+  const flags: AnomalyFlag[] = [];
+  const byCategory = new Map<string, { row: AnomalyInputRow; price: number }[]>();
+  for (const e of expenses) {
+    const qty = e.quantity ?? 0;
+    if (qty <= 0 || !isFinite(qty)) continue;
+    const price = e.amount_minor / qty;
+    if (!isFinite(price) || price <= 0) continue;
+    const arr = byCategory.get(e.category_id);
+    if (arr) arr.push({ row: e, price });
+    else byCategory.set(e.category_id, [{ row: e, price }]);
+  }
+
+  for (const points of byCategory.values()) {
+    if (points.length < MIN_PRICE_BASELINE + 1) continue;
+    for (const p of points) {
+      const others = points.filter((q) => q !== p).map((q) => q.price);
+      if (others.length < MIN_PRICE_BASELINE) continue;
+      const med = median(others);
+      if (!isFinite(med) || med <= 0) continue;
+      const ratio = p.price / med;
+      if (ratio > PRICE_LOW_RATIO && ratio < PRICE_HIGH_RATIO) continue;
+      flags.push({
+        expense_id: p.row.id,
+        severity: "info",
+        kind: "price_magnitude",
+        message:
+          ratio >= PRICE_HIGH_RATIO
+            ? `The price per unit here is many times what you usually pay for this category. That can be genuine, but it's also what happens when an amount is entered in a different currency from the one this car is set to. Worth a look at the amount.`
+            : `The price per unit here is a small fraction of what you usually pay for this category. That can be genuine, but it's also what happens when an amount is entered in a different currency from the one this car is set to. Worth a look at the amount.`,
+      });
+    }
+  }
+  return flags;
+}
+
 export type DetectOptions = {
   /** Include flags on rows the user has already dismissed. Default false. */
   includeDismissed?: boolean;
@@ -218,11 +317,15 @@ export function detectAnomalies(
   series: FuelSeries[],
   _categories?: CategoryRow[],
   options: DetectOptions = {},
+  vehicle?: Pick<VehicleRow, "purchase_date"> | null,
 ): AnomalyFlag[] {
   const all = [
     ...detectConsumptionAnomalies(series, expenses),
     ...detectOdometerAnomalies(expenses),
     ...detectDuplicateAnomalies(expenses),
+    ...(vehicle ? detectBeforePurchaseAnomalies(expenses, vehicle) : []),
+    ...detectPriceMagnitudeAnomalies(expenses),
+
   ];
   if (options.includeDismissed) return all;
   const dismissed = new Set(
