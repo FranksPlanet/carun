@@ -147,12 +147,30 @@ export function detectConsumptionAnomalies(
       }
 
       // Rule 1 + 3 — relative outlier, direction implies cause.
-      if (!canRelative) continue;
-      const z = (0.6745 * (p.per_100km - med)) / dev;
-      if (Math.abs(z) <= MODIFIED_Z_THRESHOLD) continue;
+      let direction: "low" | "high" | null = null;
+      let normValue = med;
 
-      const normText = `${fmtQty(med)} ${label}/100 km`;
-      if (z < 0) {
+      if (canRelative) {
+        const z = (0.6745 * (p.per_100km - med)) / dev;
+        if (z < -MODIFIED_Z_THRESHOLD) direction = "low";
+        else if (z > MODIFIED_Z_THRESHOLD) direction = "high";
+      } else if (values.length >= 2) {
+        // Small sample: leave-one-out ratio. Including the suspect point would
+        // drag the baseline toward it and hide exactly the case we care about.
+        const others = s.points.filter((q) => q !== p).map((q) => q.per_100km);
+        const otherMed = median(others);
+        if (isFinite(otherMed) && otherMed > 0) {
+          const ratio = p.per_100km / otherMed;
+          normValue = otherMed;
+          if (ratio < SMALL_SAMPLE_LOW_RATIO) direction = "low";
+          else if (ratio > SMALL_SAMPLE_HIGH_RATIO) direction = "high";
+        }
+      }
+
+      if (!direction) continue;
+
+      const normText = `${fmtQty(normValue)} ${label}/100 km`;
+      if (direction === "low") {
         flags.push({
           expense_id: expense.id,
           severity: "warning",
@@ -167,6 +185,7 @@ export function detectConsumptionAnomalies(
           message: `${valueText} here, against a typical ${normText} for this vehicle. A figure this far above normal usually means the odometer reading is too low, or this fill-up was entered twice. Check the ${fmtInt(p.odometer_km)} km reading and look for a duplicate.`,
         });
       }
+
     }
   }
 
