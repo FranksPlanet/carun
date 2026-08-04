@@ -1029,32 +1029,6 @@ function ExpensesPage() {
                     onCheckedChange={(v) => setForm({ ...form, full_tank: v })}
                   />
                 </div>
-                <div>
-                  <Label>Context tags</Label>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {CONTEXT_TAGS.map((tag) => {
-                      const on = form.tags.includes(tag);
-                      return (
-                        <button
-                          key={tag}
-                          type="button"
-                          className="tag-chip"
-                          data-on={on}
-                          onClick={() =>
-                            setForm({
-                              ...form,
-                              tags: on
-                                ? form.tags.filter((x) => x !== tag)
-                                : [...form.tags, tag],
-                            })
-                          }
-                        >
-                          {tag}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               </>
             )}
 
