@@ -180,12 +180,12 @@ function InsightsPage() {
     const byId = new Map(categories.map((c: CategoryRow) => [c.id, c.role] as const));
     const mapped = raw.map((e) => ({ ...e, role: byId.get(e.category_id) ?? e.role ?? "other" }));
     const series = consumptionSeries(mapped as any, categories as any);
-    const flags = detectAnomalies(mapped as any, series, categories as any);
+    const flags = detectAnomalies(mapped as any, series, categories as any, {}, vehicle ?? null);
     const flaggedByCategory: Record<string, number> = {};
     for (const s of series)
       flaggedByCategory[s.category_id] = flaggedPointCount(s, mapped as any, flags);
     return { flags, flaggedByCategory };
-  }, [expensesQ.data, categories]);
+  }, [expensesQ.data, categories, vehicle]);
 
   const fuelFlagCount = anomalies.flags.filter(
     (f) => f.kind !== "duplicate" && f.kind !== "odometer_backwards",
