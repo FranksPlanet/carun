@@ -825,11 +825,6 @@ function ExpensesPage() {
                         {(e as any).note}
                       </div>
                     )}
-                    {e.tags && e.tags.length > 0 && (
-                      <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                        {e.tags.join(" · ")}
-                      </div>
-                    )}
                     {flagOpen && flags.length > 0 && (
                       <div className="mt-2 border border-border bg-accent/15 p-2.5 space-y-2">
                         {flags.map((f, i) => (
