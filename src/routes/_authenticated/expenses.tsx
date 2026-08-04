@@ -455,17 +455,37 @@ function ExpensesPage() {
       ? amountNum / litersNum
       : null;
 
-  const donutData = categories
-    .map((c) => ({
-      id: c.id,
-      cat: c,
-      name: c.name,
-      value: moneyMinorToMajor(stats.by[c.id] ?? 0, currency),
-      minor: stats.by[c.id] ?? 0,
-      color: c.color,
-    }))
-    .filter((d) => d.value > 0);
+  // Drill-down donut. Level 1 = categories, level 2 = the individual expenses
+  // inside the drilled category. Both levels read from `expenses`, which is
+  // already VAT-transformed, so the ex-VAT view applies at every level.
+  const drillCat = drillCatId ? categoryById(categories, drillCatId) : null;
+  const donutData = (
+    drillCat
+      ? expenses
+          .filter((e) => e.category_id === drillCat.id && e.amount_minor > 0)
+          .sort((a, b) => b.amount_minor - a.amount_minor)
+          .map((e) => ({
+            id: e.id,
+            cat: drillCat,
+            name: ((e as any).note as string | null)?.trim() || formatDate(e.date, settings),
+            value: moneyMinorToMajor(e.amount_minor, currency),
+            minor: e.amount_minor,
+            color: drillCat.color,
+            drillable: false,
+          }))
+      : categories.map((c) => ({
+          id: c.id,
+          cat: c,
+          name: c.name,
+          value: moneyMinorToMajor(stats.by[c.id] ?? 0, currency),
+          minor: stats.by[c.id] ?? 0,
+          color: c.color,
+          drillable: true,
+        }))
+  ).filter((d) => d.value > 0);
   const totalMajor = donutData.reduce((s, d) => s + d.value, 0);
+  const donutTotalMinor = donutData.reduce((s, d) => s + d.minor, 0);
+
   const categoriesWithSpend = categories.filter((c) => (stats.by[c.id] ?? 0) > 0);
 
   return (
