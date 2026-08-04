@@ -10,14 +10,16 @@
 //  - never assume a locale, fuel type or vehicle type
 //  - messages name the likely CAUSE and the check to make
 
-import type { CategoryRow, ExpenseRow, FuelSeries } from "./calc";
+import type { CategoryRow, ExpenseRow, FuelSeries, VehicleRow } from "./calc";
 
 export type AnomalyKind =
   | "consumption_low"
   | "consumption_high"
   | "consumption_out_of_bounds"
   | "odometer_backwards"
-  | "duplicate";
+  | "duplicate"
+  | "before_purchase"
+  | "price_magnitude";
 
 export type AnomalySeverity = "warning" | "info";
 
@@ -49,10 +51,24 @@ export const ABSOLUTE_BOUNDS: Record<string, { min: number; max: number }> = {
 // (median/MAD) test is allowed to fire at all.
 export const MIN_RELATIVE_SAMPLE = 4;
 
+// Below MIN_RELATIVE_SAMPLE (but with at least 2 points) we use a
+// leave-one-out ratio test instead: a point is compared against the median of
+// the OTHER points, so a single bad reading can't drag the baseline toward
+// itself. Single-point series rely on absolute bounds only.
+export const SMALL_SAMPLE_LOW_RATIO = 0.6;
+export const SMALL_SAMPLE_HIGH_RATIO = 1.7;
+
+// Order-of-magnitude price check: only fires at 3x / 1/3x, which real-world
+// station-to-station and cross-border price spreads never reach.
+export const PRICE_LOW_RATIO = 1 / 3;
+export const PRICE_HIGH_RATIO = 3;
+export const MIN_PRICE_BASELINE = 3;
+
 // Modified z-score cut-off (0.6745 * deviation / MAD). 3.5 is the standard
 // Iglewicz–Hoaglin threshold; we use a slightly looser 4 so normal seasonal
 // swings (winter/towing) don't nag.
 export const MODIFIED_Z_THRESHOLD = 4;
+
 
 export function median(xs: number[]): number {
   if (xs.length === 0) return NaN;
