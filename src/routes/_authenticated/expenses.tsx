@@ -27,7 +27,6 @@ import {
   consumptionSeries,
   totalLogged,
   cumulativeSpend,
-  CONTEXT_TAGS,
   type ExpenseRow,
 } from "@/lib/calc";
 import {
@@ -96,7 +95,6 @@ type FormState = {
   amount: string;
   quantity: string;
   full_tank: boolean;
-  tags: string[];
   note: string;
   vat_rate: string;
 };
@@ -108,7 +106,6 @@ const emptyForm = (categoryId: string): FormState => ({
   amount: "",
   quantity: "",
   full_tank: true,
-  tags: [],
   note: "",
   vat_rate: "21",
 });
@@ -298,7 +295,7 @@ function ExpensesPage() {
         currency,
         quantity,
         full_tank: isFuel ? f.full_tank : null,
-        tags: isFuel ? f.tags : [],
+        tags: [],
         note: f.note || null,
         vat_rate:
           f.vat_rate.trim() === "" || !isFinite(parseLocalNumber(f.vat_rate))
@@ -366,7 +363,6 @@ function ExpensesPage() {
       amount: String(moneyMinorToMajor(e.amount_minor, currency)),
       quantity: e.quantity != null ? String(e.quantity) : "",
       full_tank: !!e.full_tank,
-      tags: e.tags ?? [],
       note: e.note ?? "",
       vat_rate: e.vat_rate != null ? String(Number(e.vat_rate)) : "",
     });
@@ -386,7 +382,6 @@ function ExpensesPage() {
       "quantity",
       "full_tank",
       "vat_rate",
-      "tags",
       "note",
     ];
     const rows = (rawExpenses as any[]).map((e) => [
@@ -398,7 +393,6 @@ function ExpensesPage() {
       e.quantity ?? "",
       e.full_tank == null ? "" : e.full_tank ? "true" : "false",
       e.vat_rate == null ? "" : String(Number(e.vat_rate)),
-      (e.tags ?? []).join("|"),
       ((e.note ?? "") as string).replace(/[\r\n]+/g, " "),
     ]);
 
