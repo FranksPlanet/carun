@@ -242,6 +242,70 @@ export function detectDuplicateAnomalies(expenses: AnomalyInputRow[]): AnomalyFl
   return flags;
 }
 
+/**
+ * Rule 6 — expense dated before the vehicle was bought. Overwhelmingly a
+ * misread or mistyped year (OCR reading 2024 for 2026, for instance).
+ */
+export function detectBeforePurchaseAnomalies(
+  expenses: AnomalyInputRow[],
+  vehicle: Pick<VehicleRow, "purchase_date">,
+): AnomalyFlag[] {
+  const purchase = vehicle.purchase_date;
+  if (!purchase) return [];
+  const flags: AnomalyFlag[] = [];
+  for (const e of expenses) {
+    if (e.date >= purchase) continue;
+    flags.push({
+      expense_id: e.id,
+      severity: "warning",
+      kind: "before_purchase",
+      message: `This is dated ${e.date}, before you bought the car on ${purchase}. Almost always the year is wrong — a scanned receipt misread, or a typo. Check the date on the receipt.`,
+    });
+  }
+  return flags;
+}
+
+/**
+ * Rule 7 — order-of-magnitude price error, e.g. a foreign-currency amount
+ * typed into a field labelled in the vehicle's currency. Deliberately blunt:
+ * genuine station-to-station and cross-border spreads stay well inside 3x.
+ */
+export function detectPriceMagnitudeAnomalies(expenses: AnomalyInputRow[]): AnomalyFlag[] {
+  const flags: AnomalyFlag[] = [];
+  const byCategory = new Map<string, { row: AnomalyInputRow; price: number }[]>();
+  for (const e of expenses) {
+    const qty = e.quantity ?? 0;
+    if (qty <= 0 || !isFinite(qty)) continue;
+    const price = e.amount_minor / qty;
+    if (!isFinite(price) || price <= 0) continue;
+    const arr = byCategory.get(e.category_id);
+    if (arr) arr.push({ row: e, price });
+    else byCategory.set(e.category_id, [{ row: e, price }]);
+  }
+
+  for (const points of byCategory.values()) {
+    if (points.length < MIN_PRICE_BASELINE + 1) continue;
+    for (const p of points) {
+      const others = points.filter((q) => q !== p).map((q) => q.price);
+      if (others.length < MIN_PRICE_BASELINE) continue;
+      const med = median(others);
+      if (!isFinite(med) || med <= 0) continue;
+      const ratio = p.price / med;
+      if (ratio > PRICE_LOW_RATIO && ratio < PRICE_HIGH_RATIO) continue;
+      flags.push({
+        expense_id: p.row.id,
+        severity: "info",
+        kind: "price_magnitude",
+        message:
+          ratio >= PRICE_HIGH_RATIO
+            ? `The price per unit here is many times what you usually pay for this category. That can be genuine, but it's also what happens when an amount is entered in a different currency from the one this car is set to. Worth a look at the amount.`
+            : `The price per unit here is a small fraction of what you usually pay for this category. That can be genuine, but it's also what happens when an amount is entered in a different currency from the one this car is set to. Worth a look at the amount.`,
+      });
+    }
+  }
+  return flags;
+}
+
 export type DetectOptions = {
   /** Include flags on rows the user has already dismissed. Default false. */
   includeDismissed?: boolean;
@@ -253,11 +317,15 @@ export function detectAnomalies(
   series: FuelSeries[],
   _categories?: CategoryRow[],
   options: DetectOptions = {},
+  vehicle?: Pick<VehicleRow, "purchase_date"> | null,
 ): AnomalyFlag[] {
   const all = [
     ...detectConsumptionAnomalies(series, expenses),
     ...detectOdometerAnomalies(expenses),
     ...detectDuplicateAnomalies(expenses),
+    ...(vehicle ? detectBeforePurchaseAnomalies(expenses, vehicle) : []),
+    ...detectPriceMagnitudeAnomalies(expenses),
+
   ];
   if (options.includeDismissed) return all;
   const dismissed = new Set(
