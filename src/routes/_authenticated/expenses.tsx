@@ -594,25 +594,55 @@ function ExpensesPage() {
       {/* Breakdown */}
       <div className="grid md:grid-cols-2 gap-4">
         <div id="category-breakdown" className="kpi-card">
-          <div className="text-sm font-semibold mb-3">Breakdown by category</div>
+          <div className="flex items-baseline justify-between gap-2 mb-1">
+            <div className="text-sm font-semibold">Breakdown by category</div>
+          </div>
+          {/* Breadcrumb — wraps rather than overflowing on narrow screens */}
+          <div className="flex items-center flex-wrap gap-x-1 gap-y-0.5 text-xs text-muted-foreground mb-3">
+            <button
+              type="button"
+              onClick={() => setDrillCatId(null)}
+              className={
+                drillCat
+                  ? "underline underline-offset-2 hover:text-foreground min-h-6"
+                  : "text-foreground min-h-6"
+              }
+              disabled={!drillCat}
+            >
+              All
+            </button>
+            {drillCat && (
+              <>
+                <span aria-hidden>/</span>
+                <span className="text-foreground truncate max-w-[12rem]">{drillCat.name}</span>
+              </>
+            )}
+          </div>
           {donutData.length === 0 ? (
             <div className="text-sm text-muted-foreground py-8 text-center">
-              No expenses logged yet.
+              {drillCat ? "Nothing in this category." : "No expenses logged yet."}
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="relative size-40 shrink-0">
+              <div className="relative size-48 sm:size-40 shrink-0">
                 <ResponsiveContainer>
                   <PieChart>
                     <Pie
+                      key={drillCat ? drillCat.id : "root"}
                       data={donutData}
                       dataKey="value"
                       nameKey="name"
-                      innerRadius={48}
-                      outerRadius={75}
+                      innerRadius="52%"
+                      outerRadius="94%"
                       paddingAngle={2}
                       stroke="var(--color-card)"
                       strokeWidth={2}
+                      isAnimationActive={false}
+                      onClick={(entry: any) => {
+                        const id = entry?.payload?.id ?? entry?.id;
+                        if (!drillCat && id) setDrillCatId(id);
+                      }}
+                      className={drillCat ? undefined : "cursor-pointer"}
                     >
                       {donutData.map((d) => (
                         <Cell key={d.id} fill={d.color} />
@@ -632,32 +662,50 @@ function ExpensesPage() {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 grid place-items-center pointer-events-none text-center">
                   <div>
-                    <div className="text-[10px] text-muted-foreground">Total</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {drillCat ? drillCat.name : "Total"}
+                    </div>
                     <div className="text-sm font-semibold num">
-                      {formatMoney(stats.total, moneySettings)}
+                      {formatMoney(donutTotalMinor, moneySettings)}
                     </div>
                   </div>
                 </div>
               </div>
-              <ul className="flex-1 w-full space-y-2 text-sm">
+              <ul className="flex-1 w-full space-y-1 text-sm">
                 {donutData.map((d) => {
                   const pct = totalMajor > 0 ? (d.value / totalMajor) * 100 : 0;
-                  return (
-                    <li key={d.id} className="flex items-center gap-3">
+                  const row = (
+                    <>
                       <CategoryIcon category={d.cat} className="size-4 shrink-0" />
-                      <span className="flex-1 truncate">{d.name}</span>
+                      <span className="flex-1 truncate text-left">{d.name}</span>
                       <span className="text-muted-foreground tabular-nums text-xs w-10 text-right">
                         {pct.toFixed(0)}%
                       </span>
                       <span className="num tabular-nums w-20 text-right">
                         {formatMoney(d.minor, moneySettings)}
                       </span>
+                    </>
+                  );
+                  return (
+                    <li key={d.id}>
+                      {d.drillable ? (
+                        <button
+                          type="button"
+                          onClick={() => setDrillCatId(d.id)}
+                          className="w-full flex items-center gap-3 min-h-9 px-1 -mx-1 hover:bg-accent/15"
+                        >
+                          {row}
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-3 min-h-9 px-1 -mx-1">{row}</div>
+                      )}
                     </li>
                   );
                 })}
               </ul>
             </div>
           )}
+
         </div>
         <div className="kpi-card">
           <div className="flex items-baseline justify-between mb-2">
