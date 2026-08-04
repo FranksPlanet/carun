@@ -158,26 +158,26 @@ function Dashboard() {
   }, [expenses, categories]);
 
 
-  // Fixed role-based spending buckets for the story stanza 3.
+  // Spending buckets for the story stanza 3 — these are the user's ACTUAL
+  // categories, so the sentence always agrees with the "Where it goes" list
+  // below it (no silent merging of e.g. Admin into "other").
   const spendingBuckets = useMemo(() => {
-    const sums = { fuel: 0, servicing: 0, repairs: 0, other: 0 };
-    for (const e of expenses) {
-      const r = e.role;
-      if (r === "fuel") sums.fuel += e.amount_minor;
-      else if (r === "routine") sums.servicing += e.amount_minor;
-      else if (r === "repair") sums.repairs += e.amount_minor;
-      else sums.other += e.amount_minor;
-    }
-    const total = sums.fuel + sums.servicing + sums.repairs + sums.other;
-    if (total <= 0) return [] as { key: "fuel" | "servicing" | "repairs" | "other"; label: string; pct: number }[];
-    const items = [
-      { key: "fuel" as const, label: "fuel", pct: Math.round((sums.fuel / total) * 100) },
-      { key: "servicing" as const, label: "servicing", pct: Math.round((sums.servicing / total) * 100) },
-      { key: "repairs" as const, label: "repairs", pct: Math.round((sums.repairs / total) * 100) },
-      { key: "other" as const, label: "other", pct: Math.round((sums.other / total) * 100) },
-    ];
-    return items.filter((b) => b.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 4);
-  }, [expenses]);
+    const sums = new Map<string, number>();
+    for (const e of expenses) sums.set(e.category_id, (sums.get(e.category_id) ?? 0) + e.amount_minor);
+    let total = 0;
+    for (const v of sums.values()) total += v;
+    if (total <= 0) return [] as { key: string; label: string; pct: number }[];
+    return categories
+      .map((c) => ({
+        key: c.id,
+        label: c.name.toLowerCase(),
+        pct: Math.round(((sums.get(c.id) ?? 0) / total) * 100),
+      }))
+      .filter((b) => b.pct > 0)
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 4);
+  }, [expenses, categories]);
+
 
   // Category breakdown by category_id (uses dynamic colours/icons)
   const catBreakdown = useMemo(() => {

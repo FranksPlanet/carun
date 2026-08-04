@@ -27,7 +27,6 @@ import {
   consumptionSeries,
   totalLogged,
   cumulativeSpend,
-  CONTEXT_TAGS,
   type ExpenseRow,
 } from "@/lib/calc";
 import {
@@ -96,7 +95,6 @@ type FormState = {
   amount: string;
   quantity: string;
   full_tank: boolean;
-  tags: string[];
   note: string;
   vat_rate: string;
 };
@@ -108,7 +106,6 @@ const emptyForm = (categoryId: string): FormState => ({
   amount: "",
   quantity: "",
   full_tank: true,
-  tags: [],
   note: "",
   vat_rate: "21",
 });
@@ -221,6 +218,8 @@ function ExpensesPage() {
 
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [drillCatId, setDrillCatId] = useState<string | null>(null);
+
   const [form, setForm] = useState<FormState>(() => emptyForm(""));
   const [importOpen, setImportOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -298,7 +297,7 @@ function ExpensesPage() {
         currency,
         quantity,
         full_tank: isFuel ? f.full_tank : null,
-        tags: isFuel ? f.tags : [],
+        tags: [],
         note: f.note || null,
         vat_rate:
           f.vat_rate.trim() === "" || !isFinite(parseLocalNumber(f.vat_rate))
@@ -366,7 +365,6 @@ function ExpensesPage() {
       amount: String(moneyMinorToMajor(e.amount_minor, currency)),
       quantity: e.quantity != null ? String(e.quantity) : "",
       full_tank: !!e.full_tank,
-      tags: e.tags ?? [],
       note: e.note ?? "",
       vat_rate: e.vat_rate != null ? String(Number(e.vat_rate)) : "",
     });
@@ -386,7 +384,6 @@ function ExpensesPage() {
       "quantity",
       "full_tank",
       "vat_rate",
-      "tags",
       "note",
     ];
     const rows = (rawExpenses as any[]).map((e) => [
@@ -398,7 +395,6 @@ function ExpensesPage() {
       e.quantity ?? "",
       e.full_tank == null ? "" : e.full_tank ? "true" : "false",
       e.vat_rate == null ? "" : String(Number(e.vat_rate)),
-      (e.tags ?? []).join("|"),
       ((e.note ?? "") as string).replace(/[\r\n]+/g, " "),
     ]);
 
@@ -461,17 +457,37 @@ function ExpensesPage() {
       ? amountNum / litersNum
       : null;
 
-  const donutData = categories
-    .map((c) => ({
-      id: c.id,
-      cat: c,
-      name: c.name,
-      value: moneyMinorToMajor(stats.by[c.id] ?? 0, currency),
-      minor: stats.by[c.id] ?? 0,
-      color: c.color,
-    }))
-    .filter((d) => d.value > 0);
+  // Drill-down donut. Level 1 = categories, level 2 = the individual expenses
+  // inside the drilled category. Both levels read from `expenses`, which is
+  // already VAT-transformed, so the ex-VAT view applies at every level.
+  const drillCat = drillCatId ? categoryById(categories, drillCatId) : null;
+  const donutData = (
+    drillCat
+      ? expenses
+          .filter((e) => e.category_id === drillCat.id && e.amount_minor > 0)
+          .sort((a, b) => b.amount_minor - a.amount_minor)
+          .map((e) => ({
+            id: e.id,
+            cat: drillCat,
+            name: ((e as any).note as string | null)?.trim() || formatDate(e.date, settings),
+            value: moneyMinorToMajor(e.amount_minor, currency),
+            minor: e.amount_minor,
+            color: drillCat.color,
+            drillable: false,
+          }))
+      : categories.map((c) => ({
+          id: c.id,
+          cat: c,
+          name: c.name,
+          value: moneyMinorToMajor(stats.by[c.id] ?? 0, currency),
+          minor: stats.by[c.id] ?? 0,
+          color: c.color,
+          drillable: true,
+        }))
+  ).filter((d) => d.value > 0);
   const totalMajor = donutData.reduce((s, d) => s + d.value, 0);
+  const donutTotalMinor = donutData.reduce((s, d) => s + d.minor, 0);
+
   const categoriesWithSpend = categories.filter((c) => (stats.by[c.id] ?? 0) > 0);
 
   return (
@@ -578,25 +594,55 @@ function ExpensesPage() {
       {/* Breakdown */}
       <div className="grid md:grid-cols-2 gap-4">
         <div id="category-breakdown" className="kpi-card">
-          <div className="text-sm font-semibold mb-3">Breakdown by category</div>
+          <div className="flex items-baseline justify-between gap-2 mb-1">
+            <div className="text-sm font-semibold">Breakdown by category</div>
+          </div>
+          {/* Breadcrumb — wraps rather than overflowing on narrow screens */}
+          <div className="flex items-center flex-wrap gap-x-1 gap-y-0.5 text-xs text-muted-foreground mb-3">
+            <button
+              type="button"
+              onClick={() => setDrillCatId(null)}
+              className={
+                drillCat
+                  ? "underline underline-offset-2 hover:text-foreground min-h-6"
+                  : "text-foreground min-h-6"
+              }
+              disabled={!drillCat}
+            >
+              All
+            </button>
+            {drillCat && (
+              <>
+                <span aria-hidden>/</span>
+                <span className="text-foreground truncate max-w-[12rem]">{drillCat.name}</span>
+              </>
+            )}
+          </div>
           {donutData.length === 0 ? (
             <div className="text-sm text-muted-foreground py-8 text-center">
-              No expenses logged yet.
+              {drillCat ? "Nothing in this category." : "No expenses logged yet."}
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="relative size-40 shrink-0">
+              <div className="relative size-48 sm:size-40 shrink-0">
                 <ResponsiveContainer>
                   <PieChart>
                     <Pie
+                      key={drillCat ? drillCat.id : "root"}
                       data={donutData}
                       dataKey="value"
                       nameKey="name"
-                      innerRadius={48}
-                      outerRadius={75}
+                      innerRadius="52%"
+                      outerRadius="94%"
                       paddingAngle={2}
                       stroke="var(--color-card)"
                       strokeWidth={2}
+                      isAnimationActive={false}
+                      onClick={(entry: any) => {
+                        const id = entry?.payload?.id ?? entry?.id;
+                        if (!drillCat && id) setDrillCatId(id);
+                      }}
+                      className={drillCat ? undefined : "cursor-pointer"}
                     >
                       {donutData.map((d) => (
                         <Cell key={d.id} fill={d.color} />
@@ -616,32 +662,50 @@ function ExpensesPage() {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 grid place-items-center pointer-events-none text-center">
                   <div>
-                    <div className="text-[10px] text-muted-foreground">Total</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {drillCat ? drillCat.name : "Total"}
+                    </div>
                     <div className="text-sm font-semibold num">
-                      {formatMoney(stats.total, moneySettings)}
+                      {formatMoney(donutTotalMinor, moneySettings)}
                     </div>
                   </div>
                 </div>
               </div>
-              <ul className="flex-1 w-full space-y-2 text-sm">
+              <ul className="flex-1 w-full space-y-1 text-sm">
                 {donutData.map((d) => {
                   const pct = totalMajor > 0 ? (d.value / totalMajor) * 100 : 0;
-                  return (
-                    <li key={d.id} className="flex items-center gap-3">
+                  const row = (
+                    <>
                       <CategoryIcon category={d.cat} className="size-4 shrink-0" />
-                      <span className="flex-1 truncate">{d.name}</span>
+                      <span className="flex-1 truncate text-left">{d.name}</span>
                       <span className="text-muted-foreground tabular-nums text-xs w-10 text-right">
                         {pct.toFixed(0)}%
                       </span>
                       <span className="num tabular-nums w-20 text-right">
                         {formatMoney(d.minor, moneySettings)}
                       </span>
+                    </>
+                  );
+                  return (
+                    <li key={d.id}>
+                      {d.drillable ? (
+                        <button
+                          type="button"
+                          onClick={() => setDrillCatId(d.id)}
+                          className="w-full flex items-center gap-3 min-h-9 px-1 -mx-1 hover:bg-accent/15"
+                        >
+                          {row}
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-3 min-h-9 px-1 -mx-1">{row}</div>
+                      )}
                     </li>
                   );
                 })}
               </ul>
             </div>
           )}
+
         </div>
         <div className="kpi-card">
           <div className="flex items-baseline justify-between mb-2">
@@ -823,11 +887,6 @@ function ExpensesPage() {
                     {(e as any).note && (
                       <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
                         {(e as any).note}
-                      </div>
-                    )}
-                    {e.tags && e.tags.length > 0 && (
-                      <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                        {e.tags.join(" · ")}
                       </div>
                     )}
                     {flagOpen && flags.length > 0 && (
@@ -1028,32 +1087,6 @@ function ExpensesPage() {
                     checked={form.full_tank}
                     onCheckedChange={(v) => setForm({ ...form, full_tank: v })}
                   />
-                </div>
-                <div>
-                  <Label>Context tags</Label>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {CONTEXT_TAGS.map((tag) => {
-                      const on = form.tags.includes(tag);
-                      return (
-                        <button
-                          key={tag}
-                          type="button"
-                          className="tag-chip"
-                          data-on={on}
-                          onClick={() =>
-                            setForm({
-                              ...form,
-                              tags: on
-                                ? form.tags.filter((x) => x !== tag)
-                                : [...form.tags, tag],
-                            })
-                          }
-                        >
-                          {tag}
-                        </button>
-                      );
-                    })}
-                  </div>
                 </div>
               </>
             )}

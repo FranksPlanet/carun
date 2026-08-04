@@ -8,10 +8,11 @@ import {
 } from "@/lib/format";
 
 export type SpendingBucket = {
-  key: "fuel" | "servicing" | "repairs" | "other";
+  key: string;
   label: string;
   pct: number;
 };
+
 
 // One entry per fuel-role category with logged fill-ups.
 export type StoryFuelSource = {

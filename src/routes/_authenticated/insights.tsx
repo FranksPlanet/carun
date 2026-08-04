@@ -26,7 +26,6 @@ import { useCategories, type CategoryRow } from "@/lib/categories";
 
 import {
   consumptionSeries,
-  segmentedAverages,
   averageConsumption,
   pricePerUnitSeries,
   lifetimeBreakdown,
@@ -198,7 +197,6 @@ function InsightsPage() {
         category_id: s.category_id,
         name: s.category_name,
         unit: s.unit,
-        segAvg: segmentedAverages(s.points),
         overallAvg: averageConsumption(s.points),
         flaggedPoints: anomalies.flaggedByCategory[s.category_id] ?? 0,
         consChartData: s.points.map((p) => ({
@@ -314,20 +312,11 @@ function InsightsPage() {
 
       {seriesViews.map((sv, idx) => (
         <div key={sv.category_id} className="space-y-6">
-          {/* Segmented averages */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="kpi-card">
-              <div className="kpi-label">{t.kpi.cleanAvg}</div>
-              <KpiValue value={formatConsumptionUnit(sv.segAvg.clean, sv.unit, settings)} />
-              <div className="text-xs text-muted-foreground mt-1">Untagged fills</div>
-            </div>
-            <div className="kpi-card">
-              <div className="kpi-label">{t.kpi.loadedAvg}</div>
-              <KpiValue value={formatConsumptionUnit(sv.segAvg.loaded, sv.unit, settings)} />
-              <div className="text-xs text-muted-foreground mt-1">
-                Towing · Fully loaded · Roof box
-              </div>
-            </div>
+          {/* Average consumption */}
+          <div className="kpi-card">
+            <div className="kpi-label">{sv.name} average</div>
+            <KpiValue value={formatConsumptionUnit(sv.overallAvg, sv.unit, settings)} />
+            <div className="text-xs text-muted-foreground mt-1">All logged fill-ups</div>
           </div>
 
           {/* Consumption trend */}
@@ -398,8 +387,7 @@ function InsightsPage() {
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-3">
-              Tagged loads (towing, roof box, fully loaded) are expected to read higher. An
-              untagged spike — highlighted — may be worth a check.
+              A highlighted spike sits well outside your usual range and may be worth a check.
             </p>
           </div>
 
