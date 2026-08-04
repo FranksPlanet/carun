@@ -218,6 +218,8 @@ function ExpensesPage() {
 
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [drillCatId, setDrillCatId] = useState<string | null>(null);
+
   const [form, setForm] = useState<FormState>(() => emptyForm(""));
   const [importOpen, setImportOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
