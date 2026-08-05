@@ -7,7 +7,7 @@ export const Route = createFileRoute("/privacy")({
       { title: "Privacy Policy — RevTab" },
       {
         name: "description",
-        content: "How RevTab collects, stores, and protects your vehicle data.",
+        content: "How RevTab collects, stores, and protects your car data.",
       },
     ],
   }),
@@ -33,7 +33,7 @@ function PrivacyPage() {
           <h2 className="text-lg font-semibold">What we collect</h2>
           <p className="text-sm">
             RevTab stores the data you enter yourself: vehicles (name, plate, fuel type,
-            purchase date, odometer, price), expenses (date, amount, category, liters,
+            purchase date, odometer, price), expenses (date, amount, category, quantity,
             notes, tags), past repairs, recurring yearly costs, and reminders. You may
             optionally upload receipt images and car photos.
           </p>

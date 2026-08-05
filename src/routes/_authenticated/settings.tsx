@@ -204,7 +204,7 @@ function SettingsPage() {
           <Trash2 className="size-4" aria-hidden /> Delete account and all data
         </h2>
         <p className="text-sm text-muted-foreground">
-          Permanently removes your profile, vehicles, expenses, repairs, recurring costs,
+          Permanently removes your profile, cars, expenses, repairs, recurring costs,
           reminders, uploaded photos, and sign-in. This cannot be undone.
         </p>
 

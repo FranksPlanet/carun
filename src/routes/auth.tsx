@@ -13,7 +13,7 @@ export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
       { title: "Sign in — RevTab" },
-      { name: "description", content: "Sign in to RevTab to track your car's true cost per kilometer." },
+      { name: "description", content: "Sign in to RevTab to track your car's true cost per kilometre." },
     ],
   }),
   validateSearch: (s: Record<string, unknown>) => ({
