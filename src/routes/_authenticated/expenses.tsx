@@ -26,9 +26,11 @@ import { applyVatView, vatSplit, vatTotals } from "@/lib/vat";
 import {
   consumptionSeries,
   totalLogged,
+  trackedKm,
   cumulativeSpend,
   type ExpenseRow,
 } from "@/lib/calc";
+import { CollapsibleCard } from "@/components/collapsible-card";
 import {
   defaultSettings,
   formatMoney,
@@ -38,6 +40,7 @@ import {
   formatQuantity,
   formatConsumptionUnit,
   formatPricePerUnit,
+  formatCostPerKm,
   formatDate,
   moneyMajorToMinor,
   moneyMinorToMajor,
@@ -98,6 +101,63 @@ type FormState = {
   note: string;
   vat_rate: string;
 };
+
+// X-axis tick strategy for the cumulative chart: adapt to the real date span
+// (year boundaries for multi-year histories, months for a year or less, days
+// for very short ones) and never emit the same label twice.
+type CumTickMode = "year" | "month" | "day";
+function cumulativeTicks(dates: string[]): { ticks: string[]; mode: CumTickMode } {
+  if (dates.length === 0) return { ticks: [], mode: "month" };
+  const first = new Date(dates[0]);
+  const last = new Date(dates[dates.length - 1]);
+  const spanDays = (last.getTime() - first.getTime()) / 86_400_000;
+  const mode: CumTickMode = spanDays > 400 ? "year" : spanDays > 45 ? "month" : "day";
+
+  // Candidate boundaries, then snap each to the first data point at or after it.
+  const wanted: number[] = [];
+  if (mode === "year") {
+    const years = last.getFullYear() - first.getFullYear() + 1;
+    const step = Math.max(1, Math.ceil(years / 10));
+    for (let y = first.getFullYear(); y <= last.getFullYear(); y += step)
+      wanted.push(new Date(y, 0, 1).getTime());
+  } else if (mode === "month") {
+    const months = Math.max(1, Math.round(spanDays / 30));
+    const step = Math.max(1, Math.ceil(months / 8));
+    const d = new Date(first.getFullYear(), first.getMonth(), 1);
+    while (d.getTime() <= last.getTime()) {
+      wanted.push(d.getTime());
+      d.setMonth(d.getMonth() + step);
+    }
+  } else {
+    const count = Math.min(6, dates.length);
+    for (let i = 0; i < count; i++)
+      wanted.push(new Date(dates[Math.round((i * (dates.length - 1)) / Math.max(1, count - 1))]).getTime());
+  }
+
+  const seenDate = new Set<string>();
+  const seenLabel = new Set<string>();
+  const ticks: string[] = [];
+  for (const w of wanted) {
+    const hit = dates.find((d) => new Date(d).getTime() >= w) ?? dates[dates.length - 1];
+    const label = formatCumTick(hit, mode);
+    if (seenDate.has(hit) || seenLabel.has(label)) continue;
+    seenDate.add(hit);
+    seenLabel.add(label);
+    ticks.push(hit);
+  }
+  if (ticks.length === 0) ticks.push(dates[0]);
+  return { ticks, mode };
+}
+
+function formatCumTick(iso: string, mode: CumTickMode): string {
+  const dt = new Date(iso);
+  if (isNaN(+dt)) return iso;
+  if (mode === "year") return String(dt.getFullYear());
+  if (mode === "month")
+    return dt.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+  return dt.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
 
 const emptyForm = (categoryId: string): FormState => ({
   date: todayLocalISO(),
@@ -185,6 +245,17 @@ function ExpensesPage() {
     }
     return Array.from(byDate.values());
   }, [expenses, currency, categories]);
+
+  const cumAxis = useMemo(
+    () => cumulativeTicks(stackedCum.map((r: any) => r.date as string)),
+    [stackedCum],
+  );
+
+  // Distance covered by the logged expenses — the denominator behind the
+  // per-km figures in the legend. Zero until there are two odometer readings.
+  const trackedDistanceKm = useMemo(() => trackedKm(expenses), [expenses]);
+
+
 
   const consPointsByOdo = useMemo(() => {
     const m = new Map<number, { per100km: number; unit: string }>();
@@ -592,12 +663,14 @@ function ExpensesPage() {
 
 
       {/* Breakdown */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <div id="category-breakdown" className="kpi-card">
-          <div className="flex items-baseline justify-between gap-2 mb-1">
-            <div className="text-sm font-semibold">Breakdown by category</div>
-          </div>
-          {/* Breadcrumb — wraps rather than overflowing on narrow screens */}
+      <div className="space-y-4">
+        <CollapsibleCard
+          id="category-breakdown"
+          title="Breakdown by category"
+          aside={formatMoney(stats.total, moneySettings)}
+          storageKey="revtab:expenses:breakdown-open"
+        >
+
           <div className="flex items-center flex-wrap gap-x-1 gap-y-0.5 text-xs text-muted-foreground mb-3">
             <button
               type="button"
@@ -675,12 +748,19 @@ function ExpensesPage() {
               <ul className="min-w-0 flex-1 w-full space-y-1 text-sm">
                 {donutData.map((d) => {
                   const pct = totalMajor > 0 ? (d.value / totalMajor) * 100 : 0;
+                  const perKm = trackedDistanceKm > 0 ? d.minor / trackedDistanceKm : null;
                   const row = (
                     <>
                       <CategoryIcon category={d.cat} className="size-4 shrink-0" />
                       <span className="min-w-0 flex-1 truncate text-left">{d.name}</span>
                       <span className="text-muted-foreground tabular-nums text-xs shrink-0 whitespace-nowrap text-right">
                         {pct.toFixed(0)}%
+                      </span>
+                      <span
+                        className="text-muted-foreground num tabular-nums text-xs shrink-0 whitespace-nowrap text-right"
+                        title="Per kilometre tracked by logged expenses"
+                      >
+                        {perKm == null ? "—" : formatCostPerKm(perKm, moneySettings)}
                       </span>
                       <span className="num tabular-nums shrink-0 whitespace-nowrap text-right">
                         {formatMoney(d.minor, moneySettings)}
@@ -705,19 +785,23 @@ function ExpensesPage() {
                 })}
               </ul>
             </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Per-km figures divide each {drillCat ? "expense" : "category"} by the{" "}
+              {formatDistance(trackedDistanceKm, moneySettings)} covered between the first and
+              last logged odometer reading.
+            </p>
             </div>
           )}
 
 
-        </div>
-        <div className="kpi-card">
-          <div className="flex items-baseline justify-between mb-2">
-            <div className="text-sm font-semibold">Cumulative spend</div>
-            <div className="text-xs text-muted-foreground num tabular-nums">
-              {formatMoney(stats.total, moneySettings)}
-            </div>
-          </div>
-          <div className="h-48">
+        </CollapsibleCard>
+        <CollapsibleCard
+          title="Cumulative spend"
+          aside={formatMoney(stats.total, moneySettings)}
+          storageKey="revtab:expenses:cumulative-open"
+        >
+          <div className="h-[300px]">
+
             {stackedCum.length === 0 ? (
               <div className="h-full grid place-items-center text-muted-foreground text-sm">
                 No data yet
@@ -737,16 +821,14 @@ function ExpensesPage() {
                   <XAxis
                     dataKey="date"
                     tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
-                    tickFormatter={(d: string) => {
-                      const dt = new Date(d);
-                      return isNaN(+dt)
-                        ? d
-                        : dt.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
-                    }}
-                    minTickGap={28}
+                    ticks={cumAxis.ticks}
+                    interval={0}
+                    tickFormatter={(d: string) => formatCumTick(d, cumAxis.mode)}
+                    minTickGap={12}
                     tickLine={false}
                     axisLine={{ stroke: "var(--color-border)" }}
                   />
+
                   <YAxis
                     tick={{ fill: "var(--color-muted-foreground)", fontSize: 10 }}
                     width={40}
@@ -801,7 +883,8 @@ function ExpensesPage() {
               ))}
             </ul>
           )}
-        </div>
+        </CollapsibleCard>
+
       </div>
 
       {/* List */}
