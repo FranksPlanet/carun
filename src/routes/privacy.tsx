@@ -32,7 +32,7 @@ function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">What we collect</h2>
           <p className="text-sm">
-            RevTab stores the data you enter yourself: vehicles (name, plate, fuel type,
+            RevTab stores the data you enter yourself: cars (name, plate, fuel type,
             purchase date, odometer, price), expenses (date, amount, category, quantity,
             notes, tags), past repairs, recurring yearly costs, and reminders. You may
             optionally upload receipt images and car photos.
