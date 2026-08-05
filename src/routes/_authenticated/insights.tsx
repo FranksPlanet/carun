@@ -468,15 +468,15 @@ function InsightsPage() {
                 Actual
               </div>
               <ul className="text-sm divide-y divide-border rounded-md border border-border">
-                <li className="flex justify-between px-3 py-2">
+                <li className="flex justify-between gap-3 px-3 py-2">
                   <span>Purchase price</span>
-                  <span className="tabular-nums">
+                  <span className="tabular-nums shrink-0 whitespace-nowrap text-right">
                     {formatMoney(lifetime.purchase_price_minor, moneySettings)}
                   </span>
                 </li>
-                <li className="flex justify-between px-3 py-2">
+                <li className="flex justify-between gap-3 px-3 py-2">
                   <span>Logged expenses total</span>
-                  <span className="tabular-nums">
+                  <span className="tabular-nums shrink-0 whitespace-nowrap text-right">
                     {formatMoney(lifetime.logged_total_minor, moneySettings)}
                   </span>
                 </li>
@@ -488,48 +488,48 @@ function InsightsPage() {
                 Estimated
               </div>
               <ul className="text-sm rounded-md border border-dashed border-border bg-muted/30 divide-y divide-border/70">
-                <li className="flex justify-between px-3 py-2">
+                <li className="flex justify-between gap-3 px-3 py-2">
                   <span>
                     Recurring across tracked years{" "}
                     <span className="text-muted-foreground">
                       ({lifetime.tracked_years.toFixed(1)} yr)
                     </span>
                   </span>
-                  <span className="tabular-nums">
+                  <span className="tabular-nums shrink-0 whitespace-nowrap text-right">
                     {t.est}{" "}
                     {formatMoney(lifetime.recurring_tracked_minor, moneySettings)}
                   </span>
                 </li>
                 {lifetime.gap_km > 0 && (
-                  <li className="flex justify-between px-3 py-2">
+                  <li className="flex justify-between gap-3 px-3 py-2">
                     <span>Backfilled running cost (pre-tracking)</span>
-                    <span className="tabular-nums">
+                    <span className="tabular-nums shrink-0 whitespace-nowrap text-right">
                       {t.est}{" "}
                       {formatMoney(lifetime.backfilled_running_minor, moneySettings)}
                     </span>
                   </li>
                 )}
                 {lifetime.gap_years > 0 && (
-                  <li className="flex justify-between px-3 py-2">
+                  <li className="flex justify-between gap-3 px-3 py-2">
                     <span>Backfilled yearly costs (pre-tracking)</span>
-                    <span className="tabular-nums">
+                    <span className="tabular-nums shrink-0 whitespace-nowrap text-right">
                       {t.est}{" "}
                       {formatMoney(lifetime.backfilled_yearly_minor, moneySettings)}
                     </span>
                   </li>
                 )}
-                <li className="flex justify-between px-3 py-2">
+                <li className="flex justify-between gap-3 px-3 py-2">
                   <span>Remembered repairs</span>
-                  <span className="tabular-nums">
+                  <span className="tabular-nums shrink-0 whitespace-nowrap text-right">
                     ≈ {formatMoney(lifetime.remembered_repairs_minor, moneySettings)}
                   </span>
                 </li>
               </ul>
             </div>
 
-            <div className="flex justify-between items-baseline pt-2 border-t border-border">
+            <div className="flex justify-between items-baseline gap-3 pt-2 border-t border-border">
               <span className="text-base font-semibold">Lifetime total</span>
-              <span className="tabular-nums text-lg font-semibold">
+              <span className="tabular-nums text-lg font-semibold shrink-0 whitespace-nowrap">
                 {formatMoney(lifetime.total_minor, moneySettings)}
               </span>
             </div>
