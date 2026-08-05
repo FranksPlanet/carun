@@ -140,8 +140,8 @@ export function detectConsumptionAnomalies(
           severity: "warning",
           kind: "consumption_out_of_bounds",
           message: low
-            ? `This fill-up works out at ${valueText}, which is below what any vehicle realistically uses. The usual cause is a missed fill-up ${spanText} — the distance is counted but the fuel for it isn't. An odometer reading that's too high does the same thing. Check whether a receipt is missing, or whether ${fmtInt(p.odometer_km)} km is right.`
-            : `This fill-up works out at ${valueText}, which is higher than any vehicle realistically uses. The usual cause is an odometer reading that's too low, or the same fill-up entered twice. Check the ${fmtInt(p.odometer_km)} km reading and look for a duplicate entry.`,
+            ? `This fill-up works out at ${valueText}, which is below what any car realistically uses. The usual cause is a missed fill-up ${spanText} — the distance is counted but the fuel for it isn't. An odometer reading that's too high does the same thing. Check whether a receipt is missing, or whether ${fmtInt(p.odometer_km)} km is right.`
+            : `This fill-up works out at ${valueText}, which is higher than any car realistically uses. The usual cause is an odometer reading that's too low, or the same fill-up entered twice. Check the ${fmtInt(p.odometer_km)} km reading and look for a duplicate entry.`,
         });
         continue;
       }
@@ -175,14 +175,14 @@ export function detectConsumptionAnomalies(
           expense_id: expense.id,
           severity: "warning",
           kind: "consumption_low",
-          message: `${valueText} here, against a typical ${normText} for this vehicle. A figure this far below normal almost always means a fill-up is missing ${spanText} — the distance got counted but the fuel didn't — or that this odometer reading is too high. Check for a receipt you didn't log, then check the ${fmtInt(p.odometer_km)} km reading.`,
+          message: `${valueText} here, against a typical ${normText} for this car. A figure this far below normal almost always means a fill-up is missing ${spanText} — the distance got counted but the fuel didn't — or that this odometer reading is too high. Check for a receipt you didn't log, then check the ${fmtInt(p.odometer_km)} km reading.`,
         });
       } else {
         flags.push({
           expense_id: expense.id,
           severity: "warning",
           kind: "consumption_high",
-          message: `${valueText} here, against a typical ${normText} for this vehicle. A figure this far above normal usually means the odometer reading is too low, or this fill-up was entered twice. Check the ${fmtInt(p.odometer_km)} km reading and look for a duplicate.`,
+          message: `${valueText} here, against a typical ${normText} for this car. A figure this far above normal usually means the odometer reading is too low, or this fill-up was entered twice. Check the ${fmtInt(p.odometer_km)} km reading and look for a duplicate.`,
         });
       }
 

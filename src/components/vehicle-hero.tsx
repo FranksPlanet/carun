@@ -141,7 +141,7 @@ export function VehicleHero({ vehicle, flush = false }: { vehicle: VehicleLike; 
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                aria-label="Vehicle options"
+                aria-label="Car options"
                 className="rounded-full bg-black/45 backdrop-blur-sm p-2 text-white hover:bg-black/60 transition-colors"
                 disabled={uploading}
               >

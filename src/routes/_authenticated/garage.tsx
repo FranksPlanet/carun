@@ -81,7 +81,7 @@ function GaragePage() {
                   purchase_vat_rate: (v as any).purchase_vat_rate ?? null,
                 }}
                 trigger={
-                  <Button variant="ghost" size="icon" aria-label="Edit vehicle">
+                  <Button variant="ghost" size="icon" aria-label="Edit car">
                     <Pencil className="size-4" />
                   </Button>
                 }

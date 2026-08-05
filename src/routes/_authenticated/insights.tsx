@@ -245,7 +245,7 @@ function InsightsPage() {
         <h1 className="text-2xl font-semibold mb-2">Insights</h1>
         <p className="text-muted-foreground mb-6">{t.empty.noVehicles}</p>
         <Button onClick={() => navigate({ to: "/onboarding" })}>
-          <Plus className="size-4 mr-1" /> Add vehicle
+          <Plus className="size-4 mr-1" /> Add car
         </Button>
       </div>
     );

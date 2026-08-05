@@ -338,7 +338,7 @@ function ExpensesPage() {
       }
       if (res.currency && res.currency !== currency) {
         toast.warning(
-          `This receipt looks like it's in ${res.currency}, but this vehicle is tracked in ${currency}. The amount was not converted — please check it.`,
+          `This receipt looks like it's in ${res.currency}, but this car is tracked in ${currency}. The amount was not converted — please check it.`,
         );
       }
     } catch (e: any) {
@@ -515,7 +515,7 @@ function ExpensesPage() {
         <h1 className="text-2xl font-semibold mb-2">{t.nav.expenses}</h1>
         <p className="text-muted-foreground mb-6">{t.empty.noVehicles}</p>
         <Button onClick={() => navigate({ to: "/onboarding" })}>
-          <Plus className="size-4 mr-1" /> Add vehicle
+          <Plus className="size-4 mr-1" /> Add car
         </Button>
       </div>
     );

@@ -47,7 +47,7 @@ type RecurringDraft = {
 };
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
-  head: () => ({ meta: [{ title: "Add vehicle — RevTab" }] }),
+  head: () => ({ meta: [{ title: "Add car — RevTab" }] }),
   component: OnboardingPage,
 });
 
@@ -183,10 +183,10 @@ function OnboardingPage() {
 
       {step === 1 && (
         <div className="space-y-4">
-          <Field label="Vehicle name">
+          <Field label="Car name">
             <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus placeholder="e.g. Daily Octavia" />
           </Field>
-          <Field label="License plate (optional)">
+          <Field label="Number plate (optional)">
             <Input value={plate} onChange={(e) => setPlate(e.target.value)} />
           </Field>
           <Field label="Fuel type">

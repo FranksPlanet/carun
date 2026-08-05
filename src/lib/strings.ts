@@ -2,7 +2,7 @@
 // can be added later without touching components.
 export const t = {
   appName: "RevTab",
-  tagline: "Know what every kilometer really costs.",
+  tagline: "Know what every kilometre really costs.",
 
   nav: {
     dashboard: "Dashboard",
@@ -16,7 +16,7 @@ export const t = {
 
   auth: {
     title: "Welcome to RevTab",
-    subtitle: "Track every kilometer your car costs you.",
+    subtitle: "Track every kilometre your car costs you.",
     email: "Email",
     password: "Password",
     signIn: "Sign in",
@@ -36,7 +36,7 @@ export const t = {
     finish: "Finish",
     skip: "Skip",
 
-    basicsTitle: "Vehicle basics",
+    basicsTitle: "Car basics",
     purchaseTitle: "When you got it",
     purchaseHint:
       "This sets the window of pre-tracking history we'll estimate for you.",
@@ -49,7 +49,7 @@ export const t = {
   },
 
   kpi: {
-    costPerKm: "Cost per kilometer driven",
+    costPerKm: "Cost per kilometre driven",
     trackedDistance: "Tracked distance",
     avgConsumption: "Avg consumption",
     loggedTotal: "Logged total",
@@ -64,10 +64,10 @@ export const t = {
   },
 
   empty: {
-    noVehicles: "No vehicles yet. Add one to get started.",
+    noVehicles: "No cars yet. Add one to get started.",
     noExpenses: "No expenses logged yet. Add one to see your cost per km.",
     needFuel:
-      "Log at least two full-tank fill-ups with liters to see consumption.",
+      "Log at least two full-tank fill-ups with litres to see consumption.",
     noReminders: "No reminders set.",
     noRecurring: "No yearly costs added yet.",
     noRepairs: "No remembered repairs.",
