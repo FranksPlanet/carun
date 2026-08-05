@@ -623,8 +623,9 @@ function ExpensesPage() {
               {drillCat ? "Nothing in this category." : "No expenses logged yet."}
             </div>
           ) : (
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="relative size-48 sm:size-40 shrink-0">
+            <div className="@container/donut">
+            <div className="flex flex-col @[400px]/donut:flex-row items-center gap-4">
+              <div className="relative size-48 @[400px]/donut:size-40 shrink-0">
                 <ResponsiveContainer>
                   <PieChart>
                     <Pie
