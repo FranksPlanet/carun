@@ -303,8 +303,8 @@ function Dashboard() {
                         <CategoryIcon category={c} className="size-4 shrink-0" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline justify-between gap-2">
-                            <span className="text-sm truncate">{c.name}</span>
-                            <span className="text-xs num text-muted-foreground">
+                            <span className="text-sm truncate min-w-0">{c.name}</span>
+                            <span className="text-xs num text-muted-foreground shrink-0 whitespace-nowrap">
                               {formatMoney(amount, cardSettings)}
                             </span>
                           </div>
