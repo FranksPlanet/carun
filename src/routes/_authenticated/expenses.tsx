@@ -623,8 +623,9 @@ function ExpensesPage() {
               {drillCat ? "Nothing in this category." : "No expenses logged yet."}
             </div>
           ) : (
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="relative size-48 sm:size-40 shrink-0">
+            <div className="@container/donut">
+            <div className="flex flex-col @[400px]/donut:flex-row items-center gap-4">
+              <div className="relative size-48 @[400px]/donut:size-40 shrink-0">
                 <ResponsiveContainer>
                   <PieChart>
                     <Pie
@@ -671,17 +672,17 @@ function ExpensesPage() {
                   </div>
                 </div>
               </div>
-              <ul className="flex-1 w-full space-y-1 text-sm">
+              <ul className="min-w-0 flex-1 w-full space-y-1 text-sm">
                 {donutData.map((d) => {
                   const pct = totalMajor > 0 ? (d.value / totalMajor) * 100 : 0;
                   const row = (
                     <>
                       <CategoryIcon category={d.cat} className="size-4 shrink-0" />
-                      <span className="flex-1 truncate text-left">{d.name}</span>
-                      <span className="text-muted-foreground tabular-nums text-xs w-10 text-right">
+                      <span className="min-w-0 flex-1 truncate text-left">{d.name}</span>
+                      <span className="text-muted-foreground tabular-nums text-xs shrink-0 whitespace-nowrap text-right">
                         {pct.toFixed(0)}%
                       </span>
-                      <span className="num tabular-nums w-20 text-right">
+                      <span className="num tabular-nums shrink-0 whitespace-nowrap text-right">
                         {formatMoney(d.minor, moneySettings)}
                       </span>
                     </>
@@ -692,19 +693,21 @@ function ExpensesPage() {
                         <button
                           type="button"
                           onClick={() => setDrillCatId(d.id)}
-                          className="w-full flex items-center gap-3 min-h-9 px-1 -mx-1 hover:bg-accent/15"
+                          className="w-full flex items-center gap-2 min-h-9 px-1 -mx-1 hover:bg-accent/15"
                         >
                           {row}
                         </button>
                       ) : (
-                        <div className="flex items-center gap-3 min-h-9 px-1 -mx-1">{row}</div>
+                        <div className="flex items-center gap-2 min-h-9 px-1 -mx-1">{row}</div>
                       )}
                     </li>
                   );
                 })}
               </ul>
             </div>
+            </div>
           )}
+
 
         </div>
         <div className="kpi-card">
