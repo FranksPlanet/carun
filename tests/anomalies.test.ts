@@ -83,7 +83,7 @@ describe("consumption outliers", () => {
     const flags = run(rows);
     expect(flags).toHaveLength(1);
     expect(flags[0].kind).toBe("consumption_out_of_bounds");
-    expect(flags[0].message).toMatch(/higher than any vehicle/i);
+    expect(flags[0].message).toMatch(/higher than any car/i);
   });
 
   it("catches a small-sample low outlier via leave-one-out (3 points)", () => {
