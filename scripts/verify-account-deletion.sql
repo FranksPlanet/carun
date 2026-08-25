@@ -41,9 +41,9 @@ BEGIN
           'teardown-check+' || uid || '@example.invalid', now(), now());
 
   -- Act as that user, exactly as PostgREST would, so auth.uid() resolves.
+  -- Only the JWT claim matters: delete_own_account_data() reads auth.uid(),
+  -- which resolves from request.jwt.claims. The connection keeps its own role.
   PERFORM set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true);
-  PERFORM set_config('role', 'authenticated', true);
-  PERFORM set_config('role', 'none', true);  -- keep owner privileges; only the claim matters
 
   -- 1. profiles
   INSERT INTO public.profiles (user_id) VALUES (uid) ON CONFLICT DO NOTHING;
