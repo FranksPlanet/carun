@@ -9,6 +9,9 @@ describe("parseLocalNumber", () => {
     expect(parseLocalNumber("107.760")).toBe(107760);
     expect(parseLocalNumber("1.234,50")).toBe(1234.5);
     expect(parseLocalNumber("1.234.567,89")).toBeCloseTo(1234567.89, 6);
+    // Comma-only grouping follows the same three-digit-group rule.
+    expect(parseLocalNumber("1,234")).toBe(1234);
+    expect(parseLocalNumber("1,234,567")).toBe(1234567);
   });
 
   it("keeps the previously-correct cases working", () => {
