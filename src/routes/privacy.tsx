@@ -34,7 +34,7 @@ function PrivacyPage() {
           <p className="text-sm">
             RevTab stores the data you enter yourself: cars (name, plate, fuel type,
             purchase date, odometer, price), expenses (date, amount, category, quantity,
-            notes, tags), past repairs, recurring yearly costs, and reminders. You may
+            notes), past repairs, and recurring yearly costs. You may
             optionally upload receipt images and car photos.
           </p>
         </section>
