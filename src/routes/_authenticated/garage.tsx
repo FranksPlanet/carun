@@ -64,8 +64,9 @@ function GaragePage() {
               <div className="min-w-0 flex-1">
                 <div className="font-display font-semibold truncate">{v.name}</div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {v.plate ? `${v.plate} · ` : ""}{cap(v.fuel_type)} · {formatDistance(v.current_odometer_km ?? 0, settings)}
+                  {v.plate ? `${v.plate} · ` : ""}{cap(v.fuel_type)} · <VehicleOdometer vehicle={v} settings={settings} />
                 </div>
+
                 <div className="text-xs text-muted-foreground truncate">
                   Resale: {v.estimated_resale_value_minor != null
                     ? formatMoney(v.estimated_resale_value_minor, { ...settings, currency: v.currency ?? settings.currency })
