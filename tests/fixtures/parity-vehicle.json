@@ -1,17 +1,18 @@
 {
-  "_note": "Snapshot of the 'ZZ TEST — delete me' (Volvo V70) fixture vehicle, taken before purge on 2026-08-02. Feed this vehicle/expenses/repairs/recurring data into calc.ts functions to reproduce the locked parity numbers below. Use as a regression fixture for src/lib/calc.ts changes now that the live DB no longer holds this vehicle.",
+  "_note": "Snapshot of the 'ZZ TEST — delete me' (Volvo V70) fixture vehicle, taken before purge on 2026-08-02. Feed this vehicle/expenses/repairs/recurring data into calc.ts functions to reproduce the locked parity numbers below. Use as a regression fixture for src/lib/calc.ts changes now that the live DB no longer holds this vehicle. Key meanings and units (clarified 2026-08-25; values unchanged): consumption figures are litres / 100 km from consumptionSeries + segmentedAverages/averageConsumption; backfill_km_variable_minor is the km-variable ('running') portion from computeBackfill().km_variable_minor in MINOR units (haléře) — NOT .total_minor, which also includes backfilled recurring costs and remembered repairs; maintenance_projection_major_per_km is defaultMaintenancePerKm() expressed in MAJOR units (Kč / km), i.e. minor/100; five_yr_projection_minor is projection().total_horizon_minor in minor units, recorded from a UI run whose adjustable assumptions (annual distance, unit price, maintenance seed) were not captured, so it is matched within 0.1%; lifetime_total_minor_approx is lifetimeBreakdown().total_minor in minor units and is explicitly approximate (recurring costs accrue with wall-clock time), matched within 2%.",
   "_parity_tripwire": {
     "clean_consumption_l_per_100km": 7.56,
     "loaded_consumption_l_per_100km": 10.00,
     "measured_avg_l_per_100km": 7.85,
-    "backfill_minor": 3690100,
+    "backfill_km_variable_minor": 3690100,
     "backfill_display": "36 901 Kč",
-    "maintenance_projection_minor_per_km": 3.01,
+    "maintenance_projection_major_per_km": 3.01,
     "five_yr_projection_minor": 54685300,
     "five_yr_projection_display": "546 853 Kč",
     "lifetime_total_minor_approx": 51300000,
     "lifetime_total_display_approx": "~513 000 Kč"
   },
+
   "vehicle": {
     "created_at": "2026-06-11T09:03:20.984862+00:00",
     "currency": "CZK",
