@@ -100,10 +100,28 @@ function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Validation messages for the odometer fields. Cost per kilometre is derived
+  // from (current odometer − purchase odometer), so a zero or backwards reading
+  // makes the app's headline number impossible to compute.
+  const currentOdoKm = toInt(currentOdo);
+  const purchaseOdoKm = toInt(purchaseOdo);
+  const currentOdoError =
+    currentOdo.trim() === "" || !isFinite(currentOdoKm) || currentOdoKm <= 0
+      ? "Enter the car's current odometer reading — cost per kilometre is worked out from it."
+      : null;
+  const purchaseOdoError =
+    purchaseOdo.trim() === "" || !isFinite(purchaseOdoKm) || purchaseOdoKm < 0
+      ? "Enter the odometer reading when you bought the car."
+      : currentOdoKm < purchaseOdoKm
+        ? `The current odometer (${currentOdoKm} km) can't be lower than the reading at purchase (${purchaseOdoKm} km).`
+        : null;
+
   function canNext(): boolean {
-    if (step === 1) return name.trim().length > 0;
+    if (step === 1) return name.trim().length > 0 && !currentOdoError;
+    if (step === 2) return !purchaseOdoError;
     return true;
   }
+
 
   function next() {
     setError(null);
@@ -198,7 +216,15 @@ function OnboardingPage() {
             </Select>
           </Field>
           <Field label="Current odometer (km)">
-            <Input inputMode="decimal" value={currentOdo} onChange={(e) => setCurrentOdo(e.target.value)} />
+            <Input
+              inputMode="decimal"
+              value={currentOdo}
+              onChange={(e) => setCurrentOdo(e.target.value)}
+              aria-invalid={!!currentOdoError}
+            />
+            {currentOdoError ? (
+              <p className="text-xs text-destructive mt-1">{currentOdoError}</p>
+            ) : null}
           </Field>
         </div>
       )}
@@ -209,7 +235,15 @@ function OnboardingPage() {
             <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
           </Field>
           <Field label="Odometer at purchase (km)">
-            <Input inputMode="decimal" value={purchaseOdo} onChange={(e) => setPurchaseOdo(e.target.value)} />
+            <Input
+              inputMode="decimal"
+              value={purchaseOdo}
+              onChange={(e) => setPurchaseOdo(e.target.value)}
+              aria-invalid={!!purchaseOdoError}
+            />
+            {purchaseOdoError ? (
+              <p className="text-xs text-destructive mt-1">{purchaseOdoError}</p>
+            ) : null}
           </Field>
           <Field label="Purchase price">
             <Input inputMode="decimal" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} />

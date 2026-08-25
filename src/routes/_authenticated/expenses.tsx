@@ -69,6 +69,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Download, Camera, Upload, AlertTriangle, X } from "lucide-react";
 import { toast } from "sonner";
+import { effectiveCurrentOdometerKm } from "@/lib/odometer";
 import { t } from "@/lib/strings";
 import { scanReceipt } from "@/lib/ocr.functions";
 import { ImportExpensesDialog } from "@/components/import-expenses-dialog";
@@ -209,6 +210,15 @@ function ExpensesPage() {
   );
   const vatSummary = useMemo(() => vatTotals(rawExpenses as any[]), [rawExpenses]);
 
+  // Pre-fill the odometer field from the derived current reading, so the form
+  // suggests the latest known value rather than the frozen onboarding one.
+  const effectiveOdo = useMemo(
+    () => effectiveCurrentOdometerKm(vehicle as any, rawExpenses as any[]),
+    [vehicle, rawExpenses],
+  );
+
+
+
   const fuelDefault = defaultForRole(categories, "fuel");
   const otherDefault = defaultForRole(categories, "other") ?? categories[0];
 
@@ -324,7 +334,7 @@ function ExpensesPage() {
         otherDefault;
       setForm({
         ...emptyForm(guess?.id ?? ""),
-        odometer: vehicle.current_odometer_km ? String(vehicle.current_odometer_km) : "",
+        odometer: effectiveOdo ? String(effectiveOdo) : "",
         date: res.date || todayLocalISO(),
         amount: res.total != null ? String(res.total) : "",
         quantity: res.liters != null ? String(res.liters) : "",
@@ -345,7 +355,7 @@ function ExpensesPage() {
       toast.error(e?.message ?? "Couldn't scan receipt");
       setForm({
         ...emptyForm(otherDefault?.id ?? ""),
-        odometer: vehicle.current_odometer_km ? String(vehicle.current_odometer_km) : "",
+        odometer: effectiveOdo ? String(effectiveOdo) : "",
       });
       setDialogOpen(true);
     } finally {
@@ -400,7 +410,7 @@ function ExpensesPage() {
   function openAdd() {
     setForm({
       ...emptyForm(fuelDefault?.id ?? otherDefault?.id ?? ""),
-      odometer: vehicle?.current_odometer_km ? String(vehicle.current_odometer_km) : "",
+      odometer: effectiveOdo ? String(effectiveOdo) : "",
     });
     setDialogOpen(true);
   }
