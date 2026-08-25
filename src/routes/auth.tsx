@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { t } from "@/lib/strings";
+import { safeNextPath } from "@/lib/safe-redirect";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/auth")({
     ],
   }),
   validateSearch: (s: Record<string, unknown>) => ({
-    next: typeof s.next === "string" && s.next.startsWith("/") && !s.next.startsWith("//") ? s.next : undefined,
+    next: safeNextPath(s.next),
   }),
   component: AuthPage,
 });

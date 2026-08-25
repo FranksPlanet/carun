@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertOwnsCategory } from "@/lib/ownership.server";
 
 const RoleEnum = z.enum(["fuel", "routine", "repair", "admin", "other"]);
 
@@ -89,6 +90,7 @@ export const deleteCategory = createServerFn({ method: "POST" })
       if (data.reassign_to === data.id) {
         throw new Error("Pick a different category to reassign to.");
       }
+      await assertOwnsCategory(supabase, data.reassign_to);
       const { error: moveErr } = await supabase
         .from("expenses")
         .update({ category_id: data.reassign_to })

@@ -101,10 +101,12 @@ export const scanReceipt = createServerFn({ method: "POST" })
             : null,
       };
     } catch (err) {
-      // Keep the raw model output diagnosable instead of failing invisibly.
+      // Diagnose parse failures without logging receipt contents (merchant,
+      // amounts and card fragments are user financial data).
       console.error("[scanReceipt] Failed to parse model JSON", {
         error: err instanceof Error ? err.message : String(err),
-        rawText: text.slice(0, 2000),
+        outputLength: text.length,
+        outputShape: text.slice(0, 40).replace(/[^\s{}[\]":,-]/g, "x"),
       });
       return {
         date: null,
