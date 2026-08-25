@@ -191,8 +191,8 @@ function SettingsPage() {
           <Download className="size-4" aria-hidden /> Export all my data
         </h2>
         <p className="text-sm text-muted-foreground">
-          Download a single JSON file with every vehicle, expense, repair, recurring cost,
-          and reminder tied to your account.
+          Download a single JSON file with every car, expense, repair, and recurring cost
+          tied to your account.
         </p>
         <Button onClick={onExport} disabled={exporting}>
           {exporting ? "Preparing…" : "Download JSON"}
@@ -205,7 +205,7 @@ function SettingsPage() {
         </h2>
         <p className="text-sm text-muted-foreground">
           Permanently removes your profile, cars, expenses, repairs, recurring costs,
-          reminders, uploaded photos, and sign-in. This cannot be undone.
+          uploaded photos, and sign-in. This cannot be undone.
         </p>
 
         {!confirmOpen ? (
