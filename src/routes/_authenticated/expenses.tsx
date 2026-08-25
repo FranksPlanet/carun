@@ -210,6 +210,15 @@ function ExpensesPage() {
   );
   const vatSummary = useMemo(() => vatTotals(rawExpenses as any[]), [rawExpenses]);
 
+  // Pre-fill the odometer field from the derived current reading, so the form
+  // suggests the latest known value rather than the frozen onboarding one.
+  const effectiveOdo = useMemo(
+    () => effectiveCurrentOdometerKm(vehicle as any, rawExpenses as any[]),
+    [vehicle, rawExpenses],
+  );
+
+
+
   const fuelDefault = defaultForRole(categories, "fuel");
   const otherDefault = defaultForRole(categories, "other") ?? categories[0];
 
