@@ -8,7 +8,9 @@ const CreateExpenseSchema = z.object({
   date: z.string(),
   odometer_km: z.number().int().min(0).max(2_000_000),
   category_id: z.string().uuid(),
-  amount_minor: z.number().int().min(0),
+  // Upper bound keeps a typo (or an agent) from writing an absurd amount.
+  // Mirrored by src/lib/mcp/tools/add-expense.ts — keep the two in sync.
+  amount_minor: z.number().int().min(0).max(1_000_000_000),
   currency: z.string().default("CZK"),
   quantity: z.number().min(0).max(1000).optional().nullable(),
   full_tank: z.boolean().optional().nullable(),
