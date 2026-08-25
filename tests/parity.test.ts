@@ -108,15 +108,16 @@ const table: Line[] = [
     expected: lp100(tw.measured_avg_l_per_100km),
   },
   {
-    metric: "Estimated costs before tracking",
-    actual: czk(backfill.total_minor),
-    expected: czk(tw.backfill_minor),
+    metric: "Running costs before tracking",
+    actual: czk(backfill.km_variable_minor),
+    expected: czk(tw.backfill_km_variable_minor),
   },
   {
     metric: "Maintenance rate",
     actual: `${num(maintenancePerKm / 100, 4)} Kč / km`,
-    expected: `${num(tw.maintenance_projection_minor_per_km / 100, 4)} Kč / km`,
+    expected: `${num(tw.maintenance_projection_major_per_km, 4)} Kč / km`,
   },
+
   {
     metric: "Five-year projected total",
     actual: czk(proj.total_horizon_minor),
