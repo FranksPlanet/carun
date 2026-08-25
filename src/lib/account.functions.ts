@@ -43,22 +43,30 @@ export const deleteAccountAndAllData = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1) Delete app rows under the user's RLS-scoped client.
-    const tables = ["expenses", "past_repairs", "recurring_costs", "reminders", "categories", "vehicles", "profiles"] as const;
-    for (const tbl of tables) {
-      const { error } = await supabase.from(tbl).delete().eq("user_id", userId);
-      if (error) throw new Error(`Failed deleting ${tbl}: ${error.message}`);
-    }
+    // 1) Delete app rows in ONE transaction via the database function
+    //    public.delete_own_account_data(). This must NOT be refactored back
+    //    into a loop of .delete() calls: each PostgREST call is its own
+    //    transaction, so a failure part-way through (the last-fuel-category
+    //    trigger used to guarantee one) irreversibly destroyed some tables
+    //    while leaving the account alive and un-deletable. One transaction
+    //    means all-or-nothing, and therefore safely retryable.
+    //    The function takes no arguments and derives the owner from auth.uid()
+    //    inside the database, so a caller can never target another user.
+    const { error: rpcErr } = await supabase.rpc("delete_own_account_data");
+    if (rpcErr) throw new Error(`Failed deleting account data: ${rpcErr.message}`);
 
-    // 2) Remove vehicle photos (stored under a folder named after the user id).
-    try {
-      const { data: files } = await supabaseAdmin.storage.from("vehicle-photos").list(userId, { limit: 1000 });
-      if (files && files.length > 0) {
-        const paths = files.map((f) => `${userId}/${f.name}`);
-        await supabaseAdmin.storage.from("vehicle-photos").remove(paths);
+    // 2) Remove the user's storage objects (each bucket keeps them under a
+    //    folder named after the user id).
+    for (const bucket of ["vehicle-photos", "receipts"] as const) {
+      try {
+        const { data: files } = await supabaseAdmin.storage.from(bucket).list(userId, { limit: 1000 });
+        if (files && files.length > 0) {
+          const paths = files.map((f) => `${userId}/${f.name}`);
+          await supabaseAdmin.storage.from(bucket).remove(paths);
+        }
+      } catch {
+        // best-effort; don't block account deletion on storage errors
       }
-    } catch {
-      // best-effort; don't block account deletion on storage errors
     }
 
     // 3) Delete the auth user (service role).
