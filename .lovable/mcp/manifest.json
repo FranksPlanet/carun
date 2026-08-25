@@ -19,7 +19,7 @@
       {
         "name": "list_vehicles",
         "title": "List vehicles",
-        "description": "List the signed-in user's vehicles with purchase, odometer and resale details.",
+        "description": "List the signed-in user's vehicles with purchase, odometer and resale details. Results are capped at the 200 most recently added vehicles.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -35,7 +35,7 @@
       {
         "name": "list_categories",
         "title": "List expense categories",
-        "description": "List the signed-in user's expense categories, including their role (fuel, repair, routine, admin, other).",
+        "description": "List the signed-in user's expense categories, including their role (fuel, repair, routine, admin, other) and, for fuel categories, the unit quantities are measured in (litres, kWh, kg, ...).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -51,7 +51,7 @@
       {
         "name": "list_expenses",
         "title": "List expenses",
-        "description": "List expenses for one of the signed-in user's vehicles, newest first. Amounts are in minor units (e.g. haléře for CZK).",
+        "description": "List expenses for one of the signed-in user's vehicles, newest first, capped at 200 rows per call (default 50). Amounts are in minor units (e.g. haléře for CZK).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -67,6 +67,8 @@
             },
             "limit": {
               "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
               "description": "How many rows to return (1-200, default 50)."
             }
           },
@@ -103,15 +105,20 @@
             },
             "date": {
               "type": "string",
-              "description": "Date of the expense, ISO format YYYY-MM-DD."
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "Date of the expense, strict ISO format YYYY-MM-DD."
             },
             "odometer_km": {
               "type": "integer",
-              "description": "Odometer reading in km at the time of the expense."
+              "minimum": 0,
+              "maximum": 2000000,
+              "description": "Odometer reading in km at the time of the expense (0-2000000)."
             },
             "amount_minor": {
               "type": "integer",
-              "description": "Amount in minor currency units."
+              "minimum": 0,
+              "maximum": 1000000000,
+              "description": "Amount in minor currency units (0-1000000000)."
             },
             "currency": {
               "type": "string",
@@ -119,7 +126,9 @@
             },
             "quantity": {
               "type": "number",
-              "description": "Litres filled, for fuel expenses only."
+              "minimum": 0,
+              "maximum": 1000,
+              "description": "Amount of fuel or energy added, expressed in the category's own unit as returned by list_categories (litres, kWh, kg, ...). Fuel-role categories only."
             },
             "full_tank": {
               "type": "boolean",
@@ -127,7 +136,14 @@
             },
             "note": {
               "type": "string",
+              "maxLength": 500,
               "description": "Short free-text note."
+            },
+            "vat_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "VAT rate as a percentage (0-100). Defaults to 21, the same default as the app's expense form."
             }
           },
           "required": [
