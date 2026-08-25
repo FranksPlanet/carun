@@ -29,6 +29,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Plus, ArrowRight, Fuel } from "lucide-react";
+import { effectiveCurrentOdometerKm } from "@/lib/odometer";
 import { t } from "@/lib/strings";
 import { VehicleHero } from "@/components/vehicle-hero";
 import { applyVatView, vatSplit } from "@/lib/vat";
@@ -109,7 +110,7 @@ function Dashboard() {
       {
         purchase_price_minor: purchasePriceMinor,
         purchase_odometer_km: vehicle.purchase_odometer_km,
-        current_odometer_km: vehicle.current_odometer_km ?? 0,
+        current_odometer_km: effectiveCurrentOdometerKm(vehicle, expenses),
         estimated_resale_value_minor:
           (vehicle as any).estimated_resale_value_minor ?? null,
       },
