@@ -1,14 +1,11 @@
-// Centralized UI copy. All user-facing strings live here so a second language
-// can be added later without touching components.
+// Shared UI copy for auth, onboarding, navigation and empty states.
+// This is not the single source of all user-facing text: most components
+// hardcode their own copy inline. Only the keys below are shared/reused.
 export const t = {
   appName: "RevTab",
-  tagline: "Know what every kilometre really costs.",
 
   nav: {
-    dashboard: "Dashboard",
     expenses: "Expenses",
-    fuel: "Fuel",
-    projection: "Projection",
     garage: "Garage",
     settings: "Settings",
     signOut: "Sign out",
@@ -50,17 +47,6 @@ export const t = {
 
   kpi: {
     costPerKm: "Cost per kilometre driven",
-    trackedDistance: "Tracked distance",
-    avgConsumption: "Avg consumption",
-    loggedTotal: "Logged total",
-    estimatedLifetime: "Estimated lifetime cost so far",
-    fillUps: "Fill-ups",
-    cleanAvg: "Clean avg",
-    loadedAvg: "Loaded avg",
-    crossoverYear: "Crossover year",
-    perYearRunning: "Per-year running",
-    totalOverHorizon: "Total over horizon",
-    modelledFuel: "Modelled fuel Kč/km",
   },
 
   empty: {
@@ -68,9 +54,6 @@ export const t = {
     noExpenses: "No expenses logged yet. Add one to see your cost per km.",
     needFuel:
       "Log at least two full-tank fill-ups with litres to see consumption.",
-    noReminders: "No reminders set.",
-    noRecurring: "No yearly costs added yet.",
-    noRepairs: "No remembered repairs.",
   },
 
   est: "≈ est",
