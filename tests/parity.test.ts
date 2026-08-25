@@ -4,6 +4,16 @@
 // the live calc.ts functions and asserts the tripwire numbers recorded in the
 // fixture. If this fails, the engine has drifted — investigate, do NOT edit the
 // expected values or calc.ts to make it green.
+//
+// KNOWN OPEN DISCREPANCIES (2026-08-25, first run of this test; unresolved,
+// deliberately left failing pending the product owner's decision):
+//   * backfill_minor 3 690 100 matches computeBackfill().km_variable_minor
+//     (3 690 099) almost exactly, but not .total_minor (10 718 333, which also
+//     includes 3 778 234 backfilled recurring + 3 250 000 remembered repairs).
+//   * maintenance_projection_minor_per_km 3.01 looks like MAJOR units
+//     (3.01 Kč / km); defaultMaintenancePerKm returns 301.28 minor / km.
+//   * five_yr_projection_minor differs by 7 770 minor (78 Kč, 0.014%) —
+//     assumption drift in annual km / unit price / maintenance seed.
 
 import { describe, expect, it } from "vitest";
 import fixture from "./fixtures/parity-vehicle.json";
