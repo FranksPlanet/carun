@@ -37,8 +37,8 @@ export default defineTool({
     // Bounds mirror CreateExpenseSchema in src/lib/expenses.functions.ts — that app schema is the source of truth.
     quantity: z
       .number()
-      .min(0)
-      .max(1000)
+      .gt(0, "Quantity must be greater than zero — omit it if there was no fill-up.")
+      .max(1000, "Quantity looks too large — the maximum is 1000 units.")
       .describe(
         "Amount of fuel or energy added, expressed in the category's own unit as returned by list_categories (litres, kWh, kg, ...). Fuel-role categories only.",
       )

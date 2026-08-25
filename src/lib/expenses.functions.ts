@@ -12,7 +12,15 @@ const CreateExpenseSchema = z.object({
   // Mirrored by src/lib/mcp/tools/add-expense.ts — keep the two in sync.
   amount_minor: z.number().int().min(0).max(1_000_000_000),
   currency: z.string().default("CZK"),
-  quantity: z.number().min(0).max(1000).optional().nullable(),
+  // A fill-up of zero is not a real fill-up, so quantity must be > 0 when given.
+  // Mirrors the expenses_quantity_range CHECK constraint in the database and
+  // the add_expense MCP tool — keep all three in sync.
+  quantity: z
+    .number()
+    .gt(0, "Quantity must be greater than zero — leave it empty if there was no fill-up.")
+    .max(1000, "Quantity looks too large — the maximum is 1000 units.")
+    .optional()
+    .nullable(),
   full_tank: z.boolean().optional().nullable(),
   tags: z.array(z.string().max(30)).max(10).default([]),
   note: z.string().max(500).optional().nullable(),
