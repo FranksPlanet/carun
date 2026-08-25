@@ -1,6 +1,10 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { supabaseForUser } from "../supabase";
+import { isCalendarDate } from "../validate";
+
+// Default VAT rate used by the expense form in the app UI.
+const DEFAULT_VAT_RATE = 21;
 
 export default defineTool({
   name: "add_expense",
@@ -10,13 +14,43 @@ export default defineTool({
   inputSchema: {
     vehicle_id: z.string().uuid().describe("Vehicle id from list_vehicles."),
     category_id: z.string().uuid().describe("Category id from list_categories."),
-    date: z.string().describe("Date of the expense, ISO format YYYY-MM-DD."),
-    odometer_km: z.number().int().describe("Odometer reading in km at the time of the expense."),
-    amount_minor: z.number().int().describe("Amount in minor currency units."),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format.")
+      .refine(isCalendarDate, "Date must be a real calendar date.")
+      .describe("Date of the expense, strict ISO format YYYY-MM-DD."),
+    // Bounds mirror CreateExpenseSchema in src/lib/expenses.functions.ts — that app schema is the source of truth.
+    odometer_km: z
+      .number()
+      .int()
+      .min(0)
+      .max(2_000_000)
+      .describe("Odometer reading in km at the time of the expense (0-2000000)."),
+    // Bounds mirror CreateExpenseSchema in src/lib/expenses.functions.ts — that app schema is the source of truth.
+    amount_minor: z
+      .number()
+      .int()
+      .min(0)
+      .max(1_000_000_000)
+      .describe("Amount in minor currency units (0-1000000000)."),
     currency: z.string().describe("Currency code, defaults to the vehicle's currency (CZK).").optional(),
-    quantity: z.number().describe("Litres filled, for fuel expenses only.").optional(),
+    // Bounds mirror CreateExpenseSchema in src/lib/expenses.functions.ts — that app schema is the source of truth.
+    quantity: z
+      .number()
+      .min(0)
+      .max(1000)
+      .describe(
+        "Amount of fuel or energy added, expressed in the category's own unit as returned by list_categories (litres, kWh, kg, ...). Fuel-role categories only.",
+      )
+      .optional(),
     full_tank: z.boolean().describe("Whether the tank was filled completely (fuel only).").optional(),
-    note: z.string().describe("Short free-text note.").optional(),
+    note: z.string().max(500).describe("Short free-text note.").optional(),
+    vat_rate: z
+      .number()
+      .min(0)
+      .max(100)
+      .describe("VAT rate as a percentage (0-100). Defaults to 21, the same default as the app's expense form.")
+      .optional(),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -55,6 +89,7 @@ export default defineTool({
         quantity: input.quantity ?? null,
         full_tank: input.full_tank ?? null,
         note: input.note ?? null,
+        vat_rate: input.vat_rate ?? DEFAULT_VAT_RATE,
         tags: [],
       })
       .select()

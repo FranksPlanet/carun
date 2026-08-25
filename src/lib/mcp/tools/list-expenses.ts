@@ -6,10 +6,10 @@ export default defineTool({
   name: "list_expenses",
   title: "List expenses",
   description:
-    "List expenses for one of the signed-in user's vehicles, newest first. Amounts are in minor units (e.g. haléře for CZK).",
+    "List expenses for one of the signed-in user's vehicles, newest first, capped at 200 rows per call (default 50). Amounts are in minor units (e.g. haléře for CZK).",
   inputSchema: {
     vehicle_id: z.string().uuid().describe("Vehicle id from list_vehicles."),
-    limit: z.number().int().describe("How many rows to return (1-200, default 50).").optional(),
+    limit: z.number().int().min(1).max(200).describe("How many rows to return (1-200, default 50).").optional(),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ vehicle_id, limit }, ctx) => {
