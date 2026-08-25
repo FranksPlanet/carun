@@ -382,6 +382,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_own_account_data: { Args: never; Returns: undefined }
       seed_default_categories: {
         Args: { _user_id: string }
         Returns: undefined
