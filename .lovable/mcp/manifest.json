@@ -126,7 +126,7 @@
             },
             "quantity": {
               "type": "number",
-              "minimum": 0,
+              "exclusiveMinimum": 0,
               "maximum": 1000,
               "description": "Amount of fuel or energy added, expressed in the category's own unit as returned by list_categories (litres, kWh, kg, ...). Fuel-role categories only."
             },
