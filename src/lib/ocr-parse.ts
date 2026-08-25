@@ -6,6 +6,9 @@
  * Strips spaces (incl. NBSP, the Czech thousands separator) and any trailing
  * unit/currency characters, converts a comma decimal separator to a dot.
  */
+/** Matches a pure thousands-grouped integer, e.g. "107.760", "1,234,567". */
+const GROUPED = /^-?\d{1,3}([.,]\d{3})+$/;
+
 export function coerceNumber(value: unknown): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value !== "string") return null;
@@ -22,7 +25,13 @@ export function coerceNumber(value: unknown): number | null {
     if (lastComma > lastDot) s = s.replace(/\./g, "").replace(",", ".");
     else s = s.replace(/,/g, "");
   } else if (lastComma >= 0) {
-    s = s.replace(",", ".");
+    // Only commas present: three-digit groups mean thousands ("1,234,567"),
+    // anything else is a decimal comma ("41,52").
+    s = GROUPED.test(s) ? s.replace(/,/g, "") : s.replace(",", ".");
+  } else if (lastDot >= 0) {
+    // Only dots present: same rule. "107.760" is Czech/German thousands
+    // grouping and must not be read as 107.76; "1234.56" stays decimal.
+    if (GROUPED.test(s)) s = s.replace(/\./g, "");
   }
 
   const n = parseFloat(s);
