@@ -35,8 +35,6 @@ import {
   defaultSettings,
   formatMoney,
   formatDistance,
-  formatConsumption,
-  formatVolume,
   formatQuantity,
   formatConsumptionUnit,
   formatPricePerUnit,
