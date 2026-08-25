@@ -9,6 +9,8 @@ import { Plus, Car, Pencil } from "lucide-react";
 import { t } from "@/lib/strings";
 import { defaultSettings, formatDistance, formatMoney } from "@/lib/format";
 import { VehicleEditDialog } from "@/components/vehicle-edit-dialog";
+import { listExpenses } from "@/lib/expenses.functions";
+import { effectiveCurrentOdometerKm } from "@/lib/odometer";
 
 export const Route = createFileRoute("/_authenticated/garage")({
   head: () => ({ meta: [{ title: "Garage — RevTab" }] }),
@@ -93,6 +95,18 @@ function GaragePage() {
       )}
     </div>
   );
+}
+
+/** Shows the derived current odometer: the stored reading, or the highest
+ *  logged expense reading when the car has been driven past it. */
+function VehicleOdometer({ vehicle, settings }: { vehicle: any; settings: any }) {
+  const fetchExpenses = useServerFn(listExpenses);
+  const q = useQuery({
+    queryKey: ["expenses", vehicle.id],
+    queryFn: () => fetchExpenses({ data: { vehicle_id: vehicle.id } }),
+  });
+  const km = effectiveCurrentOdometerKm(vehicle, (q.data ?? []) as any[]);
+  return <>{formatDistance(km, settings)}</>;
 }
 
 function cap(s: string): string {
