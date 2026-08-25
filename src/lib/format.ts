@@ -1,3 +1,4 @@
+import { coerceNumber } from "@/lib/ocr-parse";
 // Display layer: canonical values (minor currency units, km, liters) → user display.
 // Storage is always canonical; only this layer formats and converts.
 
@@ -173,16 +174,20 @@ export function currencySymbolFor(currency: string): string {
 }
 
 
+/**
+ * Parses a number typed or imported in any of the locales this app supports.
+ *
+ * Delegates to `coerceNumber` so there is exactly ONE number-parsing algorithm
+ * in the codebase. A previous duplicate implementation here never handled a dot
+ * used as a thousands separator, so Czech-formatted input was silently mangled
+ * ("107.760" -> 107.76). Do not re-implement this locally.
+ *
+ * Returns NaN for unparseable input so callers' isFinite/range guards work.
+ */
 export function parseLocalNumber(input: string): number {
   if (input == null) return NaN;
-  const s = String(input).trim();
-  if (!s) return NaN;
-  // Accept "1 234,56" / "1,234.56" / "1234.56"
-  const cleaned = s
-    .replace(/\s/g, "")
-    .replace(/(\d),(\d{1,2})$/, "$1.$2")
-    .replace(/,/g, "");
-  return parseFloat(cleaned);
+  const n = coerceNumber(String(input));
+  return n === null ? NaN : n;
 }
 
 /**
