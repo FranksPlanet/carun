@@ -216,7 +216,15 @@ function OnboardingPage() {
             </Select>
           </Field>
           <Field label="Current odometer (km)">
-            <Input inputMode="decimal" value={currentOdo} onChange={(e) => setCurrentOdo(e.target.value)} />
+            <Input
+              inputMode="decimal"
+              value={currentOdo}
+              onChange={(e) => setCurrentOdo(e.target.value)}
+              aria-invalid={!!currentOdoError}
+            />
+            {currentOdoError ? (
+              <p className="text-xs text-destructive mt-1">{currentOdoError}</p>
+            ) : null}
           </Field>
         </div>
       )}
@@ -227,7 +235,15 @@ function OnboardingPage() {
             <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} />
           </Field>
           <Field label="Odometer at purchase (km)">
-            <Input inputMode="decimal" value={purchaseOdo} onChange={(e) => setPurchaseOdo(e.target.value)} />
+            <Input
+              inputMode="decimal"
+              value={purchaseOdo}
+              onChange={(e) => setPurchaseOdo(e.target.value)}
+              aria-invalid={!!purchaseOdoError}
+            />
+            {purchaseOdoError ? (
+              <p className="text-xs text-destructive mt-1">{purchaseOdoError}</p>
+            ) : null}
           </Field>
           <Field label="Purchase price">
             <Input inputMode="decimal" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} />
