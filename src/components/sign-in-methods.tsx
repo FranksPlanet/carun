@@ -55,17 +55,30 @@ export function SignInMethods() {
     setSaving(true);
     try {
       if (hasPassword) {
-        // Re-authenticate: the server verifies the current password, so a
-        // stolen session alone cannot take the account over.
-        const { error: updateError } = await supabase.auth.updateUser({
-          password: next,
-          current_password: current,
+        // Real re-authentication. The backend ignores `current_password` on
+        // updateUser (verified empirically), so we prove the current password
+        // by actually authenticating with it — on a throwaway client that
+        // never persists a session, so the signed-in session is untouched.
+        const email = q.data?.email;
+        if (!email) throw new Error("Could not confirm your account's email address.");
+        const verifier = createClient(
+          import.meta.env.VITE_SUPABASE_URL as string,
+          import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
+          { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
+        );
+        const { error: authError } = await verifier.auth.signInWithPassword({
+          email,
+          password: current,
         });
-        if (updateError) throw updateError;
-      } else {
-        const { error: updateError } = await supabase.auth.updateUser({ password: next });
-        if (updateError) throw updateError;
+        await verifier.auth.signOut({ scope: "local" });
+        if (authError) {
+          setError("That current password isn't right.");
+          return;
+        }
       }
+      const { error: updateError } = await supabase.auth.updateUser({ password: next });
+      if (updateError) throw updateError;
+
       setCurrent("");
       setNext("");
       setConfirm("");
