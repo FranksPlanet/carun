@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { exportAllData, deleteAccountAndAllData } from "@/lib/account.functions";
 import { getProfile, updateProfile } from "@/lib/profile.functions";
 import { CategoriesManager } from "@/components/categories-manager";
+import { SignInMethods } from "@/components/sign-in-methods";
 import { t } from "@/lib/strings";
 import type { CostPerKmMode } from "@/lib/calc";
 
@@ -178,6 +179,8 @@ function SettingsPage() {
 
 
 
+
+      <SignInMethods />
 
       <section className="kpi-card space-y-3">
         <h2 className="font-semibold flex items-center gap-2">
