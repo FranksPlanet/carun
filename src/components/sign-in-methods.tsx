@@ -59,7 +59,6 @@ export function SignInMethods() {
         // stolen session alone cannot take the account over.
         const { error: updateError } = await supabase.auth.updateUser({
           password: next,
-          // @ts-expect-error current_password is accepted by Lovable Cloud auth
           current_password: current,
         });
         if (updateError) throw updateError;
