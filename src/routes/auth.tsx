@@ -125,8 +125,29 @@ function AuthPage() {
           </div>
           <div>
             <Label htmlFor="password">{t.auth.password}</Label>
-            <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input id="password" type="password" required minLength={PASSWORD_MIN_LENGTH} value={password} onChange={(e) => setPassword(e.target.value)} />
+            {mode === "signup" && (
+              <p className="text-xs text-muted-foreground mt-1">
+                At least {PASSWORD_MIN_LENGTH} characters.
+              </p>
+            )}
           </div>
+          {mode === "signin" && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  setResetEmail(email);
+                  setResetSent(false);
+                  setForgotOpen(true);
+                }}
+                className="text-sm text-primary hover:underline"
+              >
+                Forgotten your password?
+              </button>
+            </div>
+          )}
+
           {mode === "signup" && (
             <label className="flex items-start gap-2 text-sm pt-1">
               <Checkbox
