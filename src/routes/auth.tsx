@@ -33,6 +33,28 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [sendingReset, setSendingReset] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  async function onSendReset(e: React.FormEvent) {
+    e.preventDefault();
+    setSendingReset(true);
+    try {
+      // Deliberately ignore the outcome: a neutral confirmation either way, so
+      // this form can never be used to discover which addresses have accounts.
+      await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+    } catch {
+      // swallowed on purpose — see above
+    } finally {
+      setSendingReset(false);
+      setResetSent(true);
+    }
+  }
+
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
