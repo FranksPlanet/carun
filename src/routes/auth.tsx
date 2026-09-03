@@ -134,7 +134,14 @@ function AuthPage() {
           </div>
           <div>
             <Label htmlFor="password">{t.auth.password}</Label>
-            <Input id="password" type="password" required minLength={PASSWORD_MIN_LENGTH} value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input
+              id="password"
+              type="password"
+              required
+              {...(mode === "signup" ? { minLength: PASSWORD_MIN_LENGTH } : {})}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
             {mode === "signup" && (
               <p className="text-xs text-muted-foreground mt-1">
                 At least {PASSWORD_MIN_LENGTH} characters.
