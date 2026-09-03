@@ -6,9 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { t } from "@/lib/strings";
 import { safeNextPath } from "@/lib/safe-redirect";
+import { PASSWORD_MIN_LENGTH } from "@/lib/password";
+
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
