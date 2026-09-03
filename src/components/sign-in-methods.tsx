@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { createClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { PASSWORD_MIN_LENGTH, validatePasswordPair } from "@/lib/password";
 
@@ -87,12 +88,7 @@ export function SignInMethods() {
       await q.refetch();
     } catch (err) {
       const raw = err instanceof Error ? err.message : "";
-      const wrong = /current password|invalid|credential|incorrect/i.test(raw);
-      setError(
-        wrong
-          ? "That current password isn't right."
-          : raw || "Could not save your password. Please try again.",
-      );
+      setError(raw || "Could not save your password. Please try again.");
     } finally {
       setSaving(false);
     }
