@@ -6,9 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { t } from "@/lib/strings";
 import { safeNextPath } from "@/lib/safe-redirect";
+import { PASSWORD_MIN_LENGTH } from "@/lib/password";
+
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -33,6 +42,28 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [consent, setConsent] = useState(false);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [sendingReset, setSendingReset] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  async function onSendReset(e: React.FormEvent) {
+    e.preventDefault();
+    setSendingReset(true);
+    try {
+      // Deliberately ignore the outcome: a neutral confirmation either way, so
+      // this form can never be used to discover which addresses have accounts.
+      await supabase.auth.resetPasswordForEmail(resetEmail.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+    } catch {
+      // swallowed on purpose — see above
+    } finally {
+      setSendingReset(false);
+      setResetSent(true);
+    }
+  }
+
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -103,8 +134,29 @@ function AuthPage() {
           </div>
           <div>
             <Label htmlFor="password">{t.auth.password}</Label>
-            <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input id="password" type="password" required minLength={PASSWORD_MIN_LENGTH} value={password} onChange={(e) => setPassword(e.target.value)} />
+            {mode === "signup" && (
+              <p className="text-xs text-muted-foreground mt-1">
+                At least {PASSWORD_MIN_LENGTH} characters.
+              </p>
+            )}
           </div>
+          {mode === "signin" && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => {
+                  setResetEmail(email);
+                  setResetSent(false);
+                  setForgotOpen(true);
+                }}
+                className="text-sm text-primary hover:underline"
+              >
+                Forgotten your password?
+              </button>
+            </div>
+          )}
+
           {mode === "signup" && (
             <label className="flex items-start gap-2 text-sm pt-1">
               <Checkbox
@@ -151,7 +203,50 @@ function AuthPage() {
             {mode === "signin" ? t.auth.signUp : t.auth.signIn}
           </button>
         </p>
+
+        <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Reset your password</DialogTitle>
+              <DialogDescription>
+                {resetSent
+                  ? "Check your inbox."
+                  : "We'll email you a link to choose a new password."}
+              </DialogDescription>
+            </DialogHeader>
+
+            {resetSent ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  If that address has an account, we've sent a reset link. It expires
+                  after a short while and can only be used once.
+                </p>
+                <Button className="w-full" onClick={() => setForgotOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={onSendReset} className="space-y-3">
+                <div>
+                  <Label htmlFor="reset-email">{t.auth.email}</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={sendingReset}>
+                  {sendingReset ? "Sending…" : "Send reset link"}
+                </Button>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
+
     </div>
   );
 }
