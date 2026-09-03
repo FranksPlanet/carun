@@ -24,10 +24,18 @@
 //     observed gap is 7 770 minor (78 Kč, 0.014%) — well inside the band,
 //     while any real calculation change would miss it by far more.
 //   * lifetime_total_minor_approx was always explicitly approximate (recurring
-//     costs accrue with wall-clock time) and is matched within 2%.
+//     costs accrue with wall-clock time) and was matched within 2%.
+//
+// RESOLVED 2026-09-03: that 2% band was eroding by ~52 Kč/day and would have
+// failed on its own around 25 December 2026 with no code change. The clock is
+// now pinned to the fixture's snapshot date for the lifetime figure, making it
+// deterministic, and the band is tightened to a fixed 0.6%. Only lifetime*
+// depends on the clock (calc.ts Date.now() at lines 322 and 368);
+// projection() does not, so its 78 Kč gap has a different cause (unrecorded UI
+// assumptions) and is left at 0.1%. calc.ts was not touched.
 
 
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import fixture from "./fixtures/parity-vehicle.json";
 import {
   averageConsumption,
@@ -63,7 +71,27 @@ const seg = segmentedAverages(fuel.points);
 const measured = averageConsumption(fuel.points);
 const backfill = computeBackfill(vehicle, expenses, recurring, repairs);
 const maintenancePerKm = defaultMaintenancePerKm(expenses);
-const lifetime = lifetimeBreakdown(vehicle, expenses, recurring, repairs);
+
+// lifetimeBreakdown() accrues recurring costs from the first logged expense to
+// *now* (calc.ts uses Date.now()), which is by design for the app but makes a
+// fixed assertion drift upwards every day. Pin the clock to the date the
+// fixture snapshot was taken (see the fixture's _note: 2026-08-02) so the
+// recorded figure is reproduced deterministically. Timers are restored
+// immediately, and again in afterAll, so no other test sees a fake clock.
+const SNAPSHOT_DATE = "2026-08-02T00:00:00.000Z";
+function atSnapshotDate<T>(fn: () => T): T {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(SNAPSHOT_DATE));
+  try {
+    return fn();
+  } finally {
+    vi.useRealTimers();
+  }
+}
+
+const lifetime = atSnapshotDate(() =>
+  lifetimeBreakdown(vehicle, expenses, recurring, repairs),
+);
 const proj = projection(vehicle, expenses, categories, recurring, {
   annual_km: defaultAnnualKm(expenses),
   sources: [
@@ -146,6 +174,10 @@ function printReport() {
   console.log(lines.join("\n"));
 }
 
+afterAll(() => {
+  vi.useRealTimers();
+});
+
 describe("calc.ts parity against the locked real-world snapshot", () => {
   it("prints the figures for human review", () => {
     printReport();
@@ -183,9 +215,21 @@ describe("calc.ts parity against the locked real-world snapshot", () => {
 
 
   it("reproduces the lifetime total within tolerance", () => {
-    // Explicitly approximate: recurring costs accrue with wall-clock time,
-    // so allow 2%.
+    // Deterministic now: computed with the clock pinned to SNAPSHOT_DATE, so
+    // this no longer drifts upwards day by day. With time frozen the engine
+    // yields 51 557 457 minor (515 575 Kč) against the recorded ~513 000 Kč —
+    // a residual gap of 2 575 Kč (0.50%).
+    //
+    // Explanation of the residual: the recorded figure was read off the UI
+    // some weeks before the fixture was exported. Sweeping the frozen clock
+    // shows lifetimeBreakdown() passes 513 000 Kč around 2026-06-15
+    // (512 946 Kč) — i.e. the "~513 000" observation dates from mid-June 2026,
+    // while the fixture snapshot itself is dated 2026-08-02. The ~52 Kč/day of
+    // recurring accrual over those ~7 weeks accounts for the whole gap. The
+    // recorded value is deliberately NOT re-baselined; the tolerance is sized
+    // to that explanation (0.6%) rather than to a guess, and is now a fixed
+    // band instead of one that erodes with time.
     const expected = tw.lifetime_total_minor_approx;
-    expect(Math.abs(lifetime.total_minor - expected) / expected).toBeLessThan(0.02);
+    expect(Math.abs(lifetime.total_minor - expected) / expected).toBeLessThan(0.006);
   });
 });
