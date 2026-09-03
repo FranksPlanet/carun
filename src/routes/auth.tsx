@@ -194,7 +194,50 @@ function AuthPage() {
             {mode === "signin" ? t.auth.signUp : t.auth.signIn}
           </button>
         </p>
+
+        <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Reset your password</DialogTitle>
+              <DialogDescription>
+                {resetSent
+                  ? "Check your inbox."
+                  : "We'll email you a link to choose a new password."}
+              </DialogDescription>
+            </DialogHeader>
+
+            {resetSent ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  If that address has an account, we've sent a reset link. It expires
+                  after a short while and can only be used once.
+                </p>
+                <Button className="w-full" onClick={() => setForgotOpen(false)}>
+                  Done
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={onSendReset} className="space-y-3">
+                <div>
+                  <Label htmlFor="reset-email">{t.auth.email}</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={sendingReset}>
+                  {sendingReset ? "Sending…" : "Send reset link"}
+                </Button>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
+
     </div>
   );
 }
