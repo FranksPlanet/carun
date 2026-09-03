@@ -152,7 +152,7 @@ function ResetPasswordPage() {
               That reset link has expired or has already been used. Reset links are
               single-use and short-lived — request a fresh one and it'll work.
             </p>
-            <Button className="w-full" onClick={() => navigate({ to: "/auth" })}>
+            <Button className="w-full" onClick={() => navigate({ to: "/auth", search: { next: undefined } })}>
               Request a new link
             </Button>
           </div>
@@ -203,7 +203,7 @@ function ResetPasswordPage() {
         )}
 
         <p className="text-center text-sm text-muted-foreground mt-6">
-          <Link to="/auth" className="text-primary hover:underline">
+          <Link to="/auth" search={{ next: undefined }} className="text-primary hover:underline">
             Back to sign in
           </Link>
         </p>
