@@ -27,7 +27,7 @@
 //     costs accrue with wall-clock time) and is matched within 2%.
 
 
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import fixture from "./fixtures/parity-vehicle.json";
 import {
   averageConsumption,
@@ -63,7 +63,27 @@ const seg = segmentedAverages(fuel.points);
 const measured = averageConsumption(fuel.points);
 const backfill = computeBackfill(vehicle, expenses, recurring, repairs);
 const maintenancePerKm = defaultMaintenancePerKm(expenses);
-const lifetime = lifetimeBreakdown(vehicle, expenses, recurring, repairs);
+
+// lifetimeBreakdown() accrues recurring costs from the first logged expense to
+// *now* (calc.ts uses Date.now()), which is by design for the app but makes a
+// fixed assertion drift upwards every day. Pin the clock to the date the
+// fixture snapshot was taken (see the fixture's _note: 2026-08-02) so the
+// recorded figure is reproduced deterministically. Timers are restored
+// immediately, and again in afterAll, so no other test sees a fake clock.
+const SNAPSHOT_DATE = "2026-08-02T00:00:00.000Z";
+function atSnapshotDate<T>(fn: () => T): T {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(SNAPSHOT_DATE));
+  try {
+    return fn();
+  } finally {
+    vi.useRealTimers();
+  }
+}
+
+const lifetime = atSnapshotDate(() =>
+  lifetimeBreakdown(vehicle, expenses, recurring, repairs),
+);
 const proj = projection(vehicle, expenses, categories, recurring, {
   annual_km: defaultAnnualKm(expenses),
   sources: [
@@ -145,6 +165,10 @@ function printReport() {
   // eslint-disable-next-line no-console
   console.log(lines.join("\n"));
 }
+
+afterAll(() => {
+  vi.useRealTimers();
+});
 
 describe("calc.ts parity against the locked real-world snapshot", () => {
   it("prints the figures for human review", () => {
